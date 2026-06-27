@@ -142,8 +142,35 @@ function installAiaasAndGatewayFetchMock() {
           choices: [
             {
               delta: {
+                content: '<thi',
+              },
+            },
+          ],
+        },
+        {
+          choices: [
+            {
+              delta: {
+                content: 'nk>内部推理不应透出',
+              },
+            },
+          ],
+        },
+        {
+          choices: [
+            {
+              delta: {
+                content: '</think>结论：高氨氮风险存在，',
+              },
+            },
+          ],
+        },
+        {
+          choices: [
+            {
+              delta: {
                 content:
-                  '结论：高氨氮风险存在，1052 已按只读会诊合并 AIAAS 和 TDengine 证据。安全边界：direct_control_allowed=false。',
+                  '1052 已按只读会诊合并 AIAAS 和 TDengine 证据。安全边界：direct_control_allowed=false。',
               },
               finish_reason: 'stop',
             },
@@ -234,5 +261,8 @@ describe('agent AIAAS stream route', () => {
     }))
     expect(events).toContainEqual(expect.objectContaining({ type: 'done' }))
     expect(response.text).toContain('direct_control_allowed=false')
+    expect(response.text).not.toContain('<think>')
+    expect(response.text).not.toContain('</think>')
+    expect(response.text).not.toContain('内部推理不应透出')
   })
 })

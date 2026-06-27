@@ -60,6 +60,15 @@ function inputsFromLoaded(
     autoCompactThreshold: loaded.agent.autoCompactThreshold,
     morningBriefEnabled: loaded.agent.morningBrief.enabled,
     morningBriefTime: loaded.agent.morningBrief.time,
+    speechInputEnabled: loaded.speech.inputEnabled,
+    speechRecognitionLanguage: loaded.speech.recognitionLanguage,
+    speechAutoSendAfterFinal: loaded.speech.autoSendAfterFinal,
+    speechTtsEnabled: loaded.speech.ttsEnabled,
+    speechAutoSpeakAssistant: loaded.speech.autoSpeakAssistant,
+    speechTtsProvider: loaded.speech.provider,
+    speechTtsRate: loaded.speech.ttsRate,
+    speechTtsPitch: loaded.speech.ttsPitch,
+    speechTtsVoiceName: loaded.speech.ttsVoiceName,
   }
   return { ...base, ...overrides }
 }
@@ -141,9 +150,9 @@ describe('settings-page parity: buildSettingsPatch payload shape', () => {
     const loaded = makeSettings()
     const patch: SettingsPatch = buildSettingsPatch(inputsFromLoaded(loaded, 'dark'))
 
-    // Top-level keys mirror what Settings.tsx historically sent.
+    // Top-level keys mirror what Settings.tsx sends.
     expect(Object.keys(patch).sort()).toEqual(
-      ['agent', 'appearance', 'imageGeneration', 'llm', 'ocr', 'uapis'].sort(),
+      ['agent', 'appearance', 'imageGeneration', 'llm', 'ocr', 'speech', 'uapis'].sort(),
     )
 
     // Snapshot of agent block matches loaded.agent (no morningBrief drift).
@@ -160,6 +169,17 @@ describe('settings-page parity: buildSettingsPatch payload shape', () => {
       autoCompactEnabled: true,
       autoCompactThreshold: 100,
       morningBrief: { enabled: false, time: '09:30' },
+    })
+    expect(patch.speech).toEqual({
+      inputEnabled: true,
+      recognitionLanguage: 'zh-CN',
+      autoSendAfterFinal: false,
+      ttsEnabled: true,
+      autoSpeakAssistant: true,
+      ttsRate: 1,
+      ttsPitch: 1,
+      ttsVoiceName: 'zh-CN-YunxiNeural',
+      provider: 'edge-tts',
     })
     // OCR: trimmed strings + customApiKey omitted when blank.
     expect(patch.ocr).toEqual({

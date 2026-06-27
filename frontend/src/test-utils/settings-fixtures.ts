@@ -46,6 +46,17 @@ export function makeSettings(overrides: Partial<PublicSettings> = {}): PublicSet
       autoCompactThreshold: 100,
       morningBrief: { enabled: false, time: '09:30' },
     },
+    speech: {
+      inputEnabled: true,
+      recognitionLanguage: 'zh-CN',
+      autoSendAfterFinal: false,
+      ttsEnabled: true,
+      autoSpeakAssistant: true,
+      ttsRate: 1,
+      ttsPitch: 1,
+      ttsVoiceName: 'zh-CN-YunxiNeural',
+      provider: 'edge-tts',
+    },
     ocr: {
       provider: 'uapis',
       customBaseUrl: '',

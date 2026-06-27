@@ -13,13 +13,13 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from gateway.opcua_client import OpcuaClientWrapper, OpcuaConfig
+from gateway.opcua_client import OpcuaClientWrapper, OpcuaConfig as ClientOpcuaConfig
 
 
 class OpcuaConfig(BaseModel):
     """Schema for an OPC UA collector task. Drives the frontend form."""
 
-    url: str = Field(default="opc.tcp://127.0.0.1:4840",
+    url: str = Field(default="",
                      description="OPC UA server endpoint URL")
     node_id: str = Field(default="", description="NodeId string, e.g. ns=2;s=Temperature")
 
@@ -145,7 +145,7 @@ class OpcuaDriver:
             "config_cls": cls.config_cls.__name__,
             "fields": [
                 {"key": "url", "label": "Server URL", "type": "text",
-                 "default": "opc.tcp://127.0.0.1:4840"},
+                 "default": ""},
                 {"key": "node_id", "label": "Node ID", "type": "text",
                  "default": ""},
             ],
@@ -157,7 +157,7 @@ class OpcuaDriver:
     @staticmethod
     async def handle_write(url: str, node_id: str, value) -> None:
         """Execute an OPC UA write command."""
-        oc = OpcuaClientWrapper(OpcuaConfig(url=url))
+        oc = OpcuaClientWrapper(ClientOpcuaConfig(url=url))
         await oc.connect()
         try:
             await oc.write_node(node_id, value)
@@ -174,7 +174,7 @@ class OpcuaDriver:
         asyncio.set_event_loop(loop)
 
         async def _runner():
-            ua = OpcuaClientWrapper(OpcuaConfig(url=task.ua_url))
+            ua = OpcuaClientWrapper(ClientOpcuaConfig(url=task.ua_url, timeout=task.interval or 5.0))
             try:
                 await ua.connect()
                 while ctx.running.get(task.id, False):

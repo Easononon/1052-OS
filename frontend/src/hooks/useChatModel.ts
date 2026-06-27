@@ -215,9 +215,10 @@ export interface UseChatModelReturn {
   pendingUploads: AgentUploadItem[]
   uploading: boolean
   uploadState: string
+  lastAssistantContent: string
 
   // Actions
-  send: () => Promise<void>
+  send: (textOverride?: string) => Promise<void>
   stop: () => void
   clearConversation: () => Promise<void>
   compactConversation: () => Promise<void>
@@ -236,6 +237,7 @@ export function useChatModel(): UseChatModelReturn {
   const [pendingUploads, setPendingUploads] = useState<AgentUploadItem[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadState, setUploadState] = useState('')
+  const [lastAssistantContent, setLastAssistantContent] = useState('')
 
   const messagesRef = useRef<Msg[]>([])
   const nextId = useRef(1)
@@ -653,8 +655,8 @@ export function useChatModel(): UseChatModelReturn {
     }
   }, [commitMessages, persistMessages])
 
-  const send = useCallback(async () => {
-    const text = input.trim()
+  const send = useCallback(async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim()
     const attachmentsMarkdown = pendingUploads.map((item) => item.markdown).join('\n\n')
     const outgoingContent = [text, attachmentsMarkdown].filter(Boolean).join('\n\n')
     if (!outgoingContent || loading || uploading || !historyLoaded) return
@@ -712,6 +714,7 @@ export function useChatModel(): UseChatModelReturn {
                   argsPreview: info.argsPreview,
                   dangerous: info.dangerous,
                   status: 'running',
+                  startedAt: Date.now(),
                 },
               ])
             },
@@ -725,6 +728,11 @@ export function useChatModel(): UseChatModelReturn {
                       resultPreview: info.resultPreview,
                       error: info.error,
                       durationMs: info.durationMs,
+                      retryable: info.retryable,
+                      hint: info.hint,
+                      breaker: info.breaker,
+                      failureCount: info.failureCount,
+                      finishedAt: Date.now(),
                     }
                   }
                   if (!info.callId && entry.name === info.name && entry.status === 'running') {
@@ -734,6 +742,11 @@ export function useChatModel(): UseChatModelReturn {
                       resultPreview: info.resultPreview,
                       error: info.error,
                       durationMs: info.durationMs,
+                      retryable: info.retryable,
+                      hint: info.hint,
+                      breaker: info.breaker,
+                      failureCount: info.failureCount,
+                      finishedAt: Date.now(),
                     }
                   }
                   return entry
@@ -761,6 +774,7 @@ export function useChatModel(): UseChatModelReturn {
               const current = messagesRef.current.find((m) => m.id === assistantId)
               const finalContent = current?.content || ''
               patchMsg(assistantId, { streaming: false, content: finalContent }, true)
+              setLastAssistantContent(stripThinkForModel(finalContent))
             },
             onError: (message) => {
               const current = messagesRef.current.find((m) => m.id === assistantId)
@@ -794,6 +808,7 @@ export function useChatModel(): UseChatModelReturn {
           },
           true,
         )
+        setLastAssistantContent(stripThinkForModel(message.content))
       }
     } catch (e) {
       const err = e as { message?: string }
@@ -841,6 +856,7 @@ export function useChatModel(): UseChatModelReturn {
     pendingUploads,
     uploading,
     uploadState,
+    lastAssistantContent,
     send,
     stop,
     clearConversation,

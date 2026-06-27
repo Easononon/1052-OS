@@ -13,7 +13,7 @@ import threading
 import time
 
 import paho.mqtt.client as mqtt
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -185,7 +185,7 @@ class ScanRequest(BaseModel):
 
 
 class OpcuaConfigIn(BaseModel):
-    url: str = "opc.tcp://127.0.0.1:4840"
+    url: str = ""
     timeout: float = 5.0
     username: str | None = None
     password: str | None = None
@@ -202,7 +202,7 @@ class OpcuaWriteNode(BaseModel):
 
 class OpcuaBrowseRequest(BaseModel):
     node_id: str | None = None
-    depth: int = 2
+    depth: int = 0  # 0 = single-level children (default for "browse" UX); >0 = recursive tree
 
 
 class MqttConfigIn(BaseModel):
@@ -341,6 +341,8 @@ def ua_get_config():
 @app.post("/api/opcua/config")
 def ua_set_config(body: OpcuaConfigIn):
     global _ua_config
+    if not body.url.strip():
+        raise HTTPException(400, "OPC UA url required")
     _ua_config = OpcuaConfig.from_dict(body.model_dump())
     _save_driver_configs()
     return {"ok": True, "config": _ua_config.to_dict()}
@@ -375,12 +377,21 @@ async def ua_ping():
 async def ua_browse(body: OpcuaBrowseRequest):
     if not _opcua: raise HTTPException(503, "Not connected")
     try:
+        def _sanitize(value):
+            if isinstance(value, str):
+                return value.encode("utf-8", errors="replace").decode("utf-8", errors="replace")
+            if isinstance(value, list):
+                return [_sanitize(v) for v in value]
+            if isinstance(value, dict):
+                return {k: _sanitize(v) for k, v in value.items()}
+            return value
+
         if body.depth:
             tree = await _opcua.browse_tree(body.node_id, body.depth)
-            return {"ok": True, "tree": tree}
+            return {"ok": True, "tree": _sanitize(tree)}
         else:
             children = await _opcua.browse_children(body.node_id)
-            return {"ok": True, "children": children}
+            return {"ok": True, "children": _sanitize(children)}
     except Exception as e:
         raise HTTPException(502, str(e))
 
@@ -504,7 +515,7 @@ class CollectTaskIn(BaseModel):
     endian: str = "ABCD"
     bit_index: int = 0
     string_len: int = 1
-    ua_url: str = "opc.tcp://127.0.0.1:4840"
+    ua_url: str = ""
     ua_node_id: str = ""
     ua_dtype: str = ""           # OPC UA server-returned data type label (display only)
     # MQTT source (third collection protocol)
@@ -572,6 +583,38 @@ def _load_driver_configs() -> None:
         print(f"[driver-config] failed to load: {e}, using defaults", file=sys.stderr)
 
 
+# ── Collector task persistence ─────────────────────────
+_COLLECTOR_TASKS_PATH = Path.home() / ".1052os" / "gateway" / "collector-tasks.json"
+
+
+def _save_collector_tasks() -> None:
+    if not _collector:
+        return
+    try:
+        _COLLECTOR_TASKS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _COLLECTOR_TASKS_PATH.write_text(json.dumps([
+            task.to_dict() for task in _collector.tasks.values()
+        ], indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"[collector-tasks] failed to persist: {e}", file=sys.stderr)
+
+
+def _load_collector_tasks() -> None:
+    if not _collector:
+        return
+    try:
+        if not _COLLECTOR_TASKS_PATH.exists():
+            return
+        data = json.loads(_COLLECTOR_TASKS_PATH.read_text())
+        if not isinstance(data, list):
+            return
+        for item in data:
+            if isinstance(item, dict):
+                _collector.add_task(CollectTask.from_dict(item))
+    except Exception as e:
+        print(f"[collector-tasks] failed to load: {e}, using empty tasks", file=sys.stderr)
+
+
 # ── TDengine config persistence ───────────────────────
 # Stored at ~/.1052os/gateway/td-config.json so the user's last-used TDengine
 # server (host/port/user/password/database) survives gateway restarts. The
@@ -617,6 +660,7 @@ def _connect_td_engine(cfg: TdConfig) -> TdClient:
         _mqtt_publisher.start()
     if _collector and _collector.mqtt_publisher is None:
         _collector.mqtt_publisher = _mqtt_publisher
+    _load_collector_tasks()
     if _mqtt_publisher:
         _anomaly.mqtt_publisher = _mqtt_publisher
     if _heartbeat is None:
@@ -759,11 +803,21 @@ def td_insert(body: TdInsertIn):
 
 # ── Collector ─────────────────────────────────────────
 
+def _validate_collect_task(task: CollectTask) -> None:
+    if task.protocol == "opcua":
+        if not task.ua_url.strip():
+            raise HTTPException(400, "OPC UA ua_url required")
+        if not task.ua_node_id.strip():
+            raise HTTPException(400, "OPC UA ua_node_id required")
+
+
 @app.post("/api/collector/add")
 def collector_add(body: CollectTaskIn):
     if not _collector: raise HTTPException(503, "TDengine not connected")
     task = CollectTask.from_dict(body.model_dump())
+    _validate_collect_task(task)
     _collector.add_task(task)
+    _save_collector_tasks()
     return {"ok": True, "task": task.to_dict()}
 
 
@@ -808,27 +862,48 @@ def collector_add_v2(body: dict):
     # the protocol-specific mapping.
     payload.update(driver.to_task_fields(cfg))
     task = CollectTask.from_dict(payload)
+    _validate_collect_task(task)
     _collector.add_task(task)
+    _save_collector_tasks()
     return {"ok": True, "task": task.to_dict()}
 
 
 @app.post("/api/collector/start")
-def collector_start(body: dict):
+def collector_start(body: dict | None = None, task_id: str | None = Query(default=None)):
     if not _collector: raise HTTPException(503, "TDengine not connected")
-    task_id = body.get("task_id") or body.get("id")
+    data = body or {}
+    task_id = task_id or data.get("task_id") or data.get("id")
     if not task_id:
         raise HTTPException(400, "missing task_id")
     _collector.start_task(task_id)
     return {"ok": True}
 
 @app.post("/api/collector/stop")
-def collector_stop(body: dict):
+def collector_stop(body: dict | None = None, task_id: str | None = Query(default=None)):
     if not _collector: raise HTTPException(503, "TDengine not connected")
-    task_id = body.get("task_id") or body.get("id")
+    data = body or {}
+    task_id = task_id or data.get("task_id") or data.get("id")
     if not task_id:
         raise HTTPException(400, "missing task_id")
     _collector.stop_task(task_id)
     return {"ok": True}
+
+@app.post("/api/collector/delete")
+def collector_delete(body: dict | None = None, task_id: str | None = Query(default=None)):
+    """Stop a task AND remove it from the collector's task list.
+
+    `stop` only pauses; the task stays registered. `delete` is the hard remove
+    (re-`add` it if you want it back). 404 if the task_id was never registered.
+    """
+    if not _collector: raise HTTPException(503, "TDengine not connected")
+    data = body or {}
+    task_id = task_id or data.get("task_id") or data.get("id")
+    if not task_id:
+        raise HTTPException(400, "missing task_id")
+    if task_id not in _collector.tasks:
+        raise HTTPException(404, f"unknown task_id: {task_id}")
+    _collector.remove_task(task_id)
+    return {"ok": True, "removed": task_id}
 
 @app.get("/api/collector/status")
 def collector_status():

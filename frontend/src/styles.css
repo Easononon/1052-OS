@@ -584,6 +584,15 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   cursor: not-allowed;
   filter: none;
 }
+.icon-btn.voice-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+}
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .search {
   display: flex;
@@ -1614,6 +1623,10 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   text-align: center;
   font-size: 11px;
   color: var(--fg-4);
+}
+
+.composer-hint.voice-hint {
+  color: var(--accent);
 }
 
 .toast {
@@ -9815,4 +9828,63 @@ button.social-platform-card:hover {
 
 .wiki-index-fields .wiki-form-grid {
   padding: 10px 12px;
+}
+
+
+.ia-mark {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(35, 211, 238, 0.22), transparent 42%),
+    linear-gradient(135deg, rgba(20, 184, 166, 0.18), rgba(232, 163, 61, 0.16));
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.2) inset,
+    0 16px 34px -20px rgba(34, 211, 238, 0.9),
+    0 0 28px -18px var(--accent);
+  overflow: hidden;
+}
+.ia-mark::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 9px;
+  border: 1px solid rgba(34, 211, 238, 0.34);
+  clip-path: polygon(0 0, 82% 0, 100% 18%, 100% 100%, 18% 100%, 0 82%);
+}
+.ia-mark-core {
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fef3c7 0 18%, var(--accent) 19% 46%, #22d3ee 47% 100%);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.88), 0 0 22px var(--accent-ring);
+  z-index: 2;
+}
+.ia-mark-ring {
+  position: absolute;
+  border: 1px solid rgba(34, 211, 238, 0.38);
+  border-radius: 50%;
+}
+.ia-mark-ring-a { inset: 24%; animation: ia-spin 12s linear infinite; }
+.ia-mark-ring-b { inset: 14%; border-color: rgba(232, 163, 61, 0.34); animation: ia-spin 16s linear infinite reverse; }
+.ia-mark-node {
+  position: absolute;
+  width: 8%;
+  height: 8%;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.55);
+}
+.ia-mark-node-a { top: 19%; left: 50%; }
+.ia-mark-node-b { right: 20%; bottom: 26%; background: var(--accent); box-shadow: 0 0 12px var(--accent-ring); }
+.ia-mark-node-c { left: 22%; bottom: 28%; background: var(--success); box-shadow: 0 0 12px rgba(52, 211, 153, 0.5); }
+@keyframes ia-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ia-mark-ring-a,
+  .ia-mark-ring-b {
+    animation: none;
+  }
 }

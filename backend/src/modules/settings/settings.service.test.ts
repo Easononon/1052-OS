@@ -267,6 +267,48 @@ describe('settings llm profiles', () => {
   })
 })
 
+describe('settings speech', () => {
+  it('defaults, normalizes, and exposes edge-tts speech settings', async () => {
+    const service = await import('./settings.service.js')
+
+    expect((await service.getSettings()).speech).toEqual({
+      inputEnabled: true,
+      recognitionLanguage: 'zh-CN',
+      autoSendAfterFinal: false,
+      ttsEnabled: true,
+      autoSpeakAssistant: true,
+      ttsRate: 1,
+      ttsPitch: 1,
+      ttsVoiceName: 'zh-CN-YunxiNeural',
+      provider: 'edge-tts',
+    })
+
+    const updated = await service.updateSettings({
+      speech: {
+        recognitionLanguage: ' en-US ',
+        autoSendAfterFinal: true,
+        autoSpeakAssistant: true,
+        ttsRate: 9,
+        ttsPitch: -1,
+        ttsVoiceName: 'Tingting',
+        provider: 'edge-tts',
+      },
+    })
+
+    expect(updated.speech).toEqual({
+      inputEnabled: true,
+      recognitionLanguage: 'en-US',
+      autoSendAfterFinal: true,
+      ttsEnabled: true,
+      autoSpeakAssistant: true,
+      ttsRate: 2,
+      ttsPitch: 0,
+      ttsVoiceName: 'Tingting',
+      provider: 'edge-tts',
+    })
+  })
+})
+
 describe('settings appearance reduceMotion + effects (P0)', () => {
   it('omits reduceMotion and effects in default settings (backward-compatible with old settings.json)', async () => {
     const service = await import('./settings.service.js')

@@ -20,6 +20,59 @@ import type {
   TokenUsage,
 } from './agent.types.js'
 
+function trailingTagPrefixLength(value: string, tag: string) {
+  const lowerValue = value.toLowerCase()
+  const lowerTag = tag.toLowerCase()
+  const max = Math.min(lowerValue.length, lowerTag.length - 1)
+  for (let length = max; length > 0; length -= 1) {
+    if (lowerValue.endsWith(lowerTag.slice(0, length))) return length
+  }
+  return 0
+}
+
+function createThinkStreamFilter() {
+  const openTag = '<think>'
+  const closeTag = '</think>'
+  let buffer = ''
+  let inThinkBlock = false
+
+  return (chunk: string) => {
+    buffer += chunk
+    let output = ''
+
+    while (buffer) {
+      const lowerBuffer = buffer.toLowerCase()
+
+      if (inThinkBlock) {
+        const closeIndex = lowerBuffer.indexOf(closeTag)
+        if (closeIndex === -1) {
+          const keep = trailingTagPrefixLength(buffer, closeTag)
+          buffer = keep > 0 ? buffer.slice(-keep) : ''
+          break
+        }
+
+        buffer = buffer.slice(closeIndex + closeTag.length)
+        inThinkBlock = false
+        continue
+      }
+
+      const openIndex = lowerBuffer.indexOf(openTag)
+      if (openIndex === -1) {
+        const keep = trailingTagPrefixLength(buffer, openTag)
+        output += keep > 0 ? buffer.slice(0, -keep) : buffer
+        buffer = keep > 0 ? buffer.slice(-keep) : ''
+        break
+      }
+
+      output += buffer.slice(0, openIndex)
+      buffer = buffer.slice(openIndex + openTag.length)
+      inThinkBlock = true
+    }
+
+    return output
+  }
+}
+
 export const agentRouter: Router = Router()
 const agentUpload = multer({
   storage: multer.memoryStorage(),
@@ -336,7 +389,18 @@ agentRouter.post('/chat/stream', async (req, res, next) => {
     res.flushHeaders()
     headersSent = true
 
+    const filterThinkDelta = createThinkStreamFilter()
     const write = (payload: object) => {
+      if ((payload as { type?: unknown }).type === 'delta') {
+        const content = (payload as { content?: unknown }).content
+        if (typeof content !== 'string') {
+          return
+        }
+        const visible = filterThinkDelta(content)
+        if (!visible) return
+        res.write(`data: ${JSON.stringify({ ...payload, content: visible })}\n\n`)
+        return
+      }
       res.write(`data: ${JSON.stringify(payload)}\n\n`)
     }
 

@@ -375,8 +375,8 @@ def build_http_webhook_flow(
 
 
 def build_opcua_read_flow(
-    endpoint: str = "opc.tcp://127.0.0.1:4840",
-    node_id: str = "ns=2;s=Device1.Temperature",
+    endpoint: str = "",
+    node_id: str = "",
     device: str = "opcua_device",
     tag: str = "temperature",
     interval_ms: int = 5000,
@@ -401,7 +401,7 @@ def build_opcua_read_flow(
 
 
 def build_s7_read_flow(
-    endpoint: str = "192.168.1.10",
+    endpoint: str = "",
     variable: str = "DB1,REAL0",
     device: str = "s7_device",
     tag: str = "db1_real0",
@@ -655,8 +655,8 @@ PROTOCOLS: dict[str, Protocol] = {
         description="按周期读取 OPC UA NodeId,写入 /api/td/insert。",
         required_modules=("node-red-contrib-opcua",),
         param_schema=(
-            Param("endpoint", "Endpoint", default="opc.tcp://127.0.0.1:4840"),
-            Param("node_id", "NodeId", default="ns=2;s=Device1.Temperature"),
+            Param("endpoint", "Endpoint", default=""),
+            Param("node_id", "NodeId", default=""),
             Param("interval_ms", "Poll Interval ms", "number", 5000),
             Param("device", "Device", default="opcua_device"),
             Param("tag", "Tag", default="temperature"),

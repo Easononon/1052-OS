@@ -197,6 +197,18 @@ describe('agent progressive disclosure helpers', () => {
     expect(describePackForRouting('data-pack')).toContain('SQL')
   })
 
+  it('mounts industrial gateway realtime snapshot tools through data-pack', () => {
+    const toolNames = getToolNamesForMountedPacks(expandMountedPacks(['data-pack']))
+
+    expect(toolNames).toContain('industrial_get_realtime_snapshot')
+    expect(toolNames).toContain('industrial_list_tags')
+    expect(toolNames).toContain('industrial_get_collector_status')
+    expect(toolNames).toContain('industrial_get_nodered_status')
+    expect(hasAgentTool('industrial_get_realtime_snapshot')).toBe(true)
+    expect(describePackForRouting('data-pack')).toContain('实时快照')
+    expect(describePackForRouting('data-pack')).toContain('工业网关')
+  })
+
   it('mounts AIAAS precision aeration advisory tools through data-pack', () => {
     const toolNames = getToolNamesForMountedPacks(expandMountedPacks(['data-pack']))
 

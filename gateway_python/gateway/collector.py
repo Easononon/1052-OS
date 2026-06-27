@@ -33,7 +33,7 @@ class CollectTask:
     bit_index: int = 0            # for dtype="bit"
     string_len: int = 1           # for dtype="ascii" / "utf8" (chars or bytes)
     # OPC UA
-    ua_url: str = "opc.tcp://127.0.0.1:4840"
+    ua_url: str = ""
     ua_node_id: str = ""
     # MQTT source (read from broker as a third collection protocol)
     mq_broker_host: str = "127.0.0.1"
@@ -83,7 +83,7 @@ class CollectTask:
             mb_count=d.get("mb_count", 1), mb_register=d.get("mb_register", "holding"),
             dtype=d.get("dtype", "u16"), endian=d.get("endian", DEFAULT_ENDIAN),
             bit_index=d.get("bit_index", 0), string_len=d.get("string_len", 1),
-            ua_url=d.get("ua_url", "opc.tcp://127.0.0.1:4840"),
+            ua_url=d.get("ua_url", ""),
             ua_node_id=d.get("ua_node_id", ""),
             mq_broker_host=d.get("mq_broker_host", "127.0.0.1"),
             mq_broker_port=d.get("mq_broker_port", 1883),
@@ -129,7 +129,12 @@ class DataCollector:
         )
 
     def add_task(self, task: CollectTask):
+        was_running = self._running.get(task.id, False)
+        if was_running:
+            self.stop_task(task.id)
         self.tasks[task.id] = task
+        if was_running:
+            self.start_task(task.id)
 
     def remove_task(self, task_id: str):
         self.stop_task(task_id)
@@ -227,13 +232,13 @@ class DataCollector:
 
     def stop_task(self, task_id: str):
         task = self.tasks.get(task_id)
+        self._running[task_id] = False
         driver = try_driver(task.protocol) if task else None
 
         if driver is not None:
             driver.stop(task)
         else:
             # Legacy: collector-owned thread.
-            self._running[task_id] = False
             t = self._threads.pop(task_id, None)
             if t:
                 t.join(timeout=5)

@@ -11,7 +11,7 @@ Wire format (modbus):
 
 Wire format (opcua):
     {"request_id": "...", "cmd": "write_node",
-     "url": "opc.tcp://127.0.0.1:4840", "node_id": "ns=2;s=Tag1",
+     "url": "opc.tcp://<server-ip>:4840", "node_id": "ns=<n>;<type>=<id>",
      "value": 42.0}
 
 Supported modbus cmd values:
@@ -141,10 +141,18 @@ class CommandHandler:
 
         request_id = str(payload.get("request_id") or uuid.uuid4().hex)
         cmd = payload.get("cmd", "")
-        url = payload.get("url", "opc.tcp://127.0.0.1:4840")
-        node_id = payload.get("node_id", "")
+        url = str(payload.get("url", "")).strip()
+        node_id = str(payload.get("node_id", "")).strip()
         value = payload.get("value")
         target = f"{url}/{node_id}"
+
+        if not url or not node_id:
+            self.audit.log(
+                request_id=request_id, source="nodered",
+                protocol="opcua", target=target, cmd=cmd or "?",
+                value=None, result="error", error="missing opcua url or node_id",
+            )
+            return
 
         if cmd != "write_node":
             log.warning(f"CommandHandler: unknown opcua cmd '{cmd}'")

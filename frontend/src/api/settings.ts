@@ -28,6 +28,18 @@ export type AppearanceSettings = {
   effects?: AppearanceEffects
 }
 
+export type SpeechSettings = {
+  inputEnabled: boolean
+  recognitionLanguage: string
+  autoSendAfterFinal: boolean
+  ttsEnabled: boolean
+  autoSpeakAssistant: boolean
+  ttsRate: number
+  ttsPitch: number
+  ttsVoiceName: string
+  provider: 'browser' | 'edge-tts'
+}
+
 export type PublicSettings = {
   llm: {
     baseUrl: string
@@ -71,6 +83,7 @@ export type PublicSettings = {
       time: string
     }
   }
+  speech: SpeechSettings
   ocr: {
     provider: 'uapis' | 'custom-model'
     customBaseUrl: string
@@ -145,6 +158,7 @@ export type SettingsPatch = {
   }>
   appearance?: Partial<PublicSettings['appearance']>
   agent?: Partial<PublicSettings['agent']>
+  speech?: Partial<SpeechSettings>
   ocr?: Partial<{
     provider: PublicSettings['ocr']['provider']
     customBaseUrl: string

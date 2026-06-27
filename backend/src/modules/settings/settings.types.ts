@@ -126,12 +126,25 @@ export type UapisSettings = {
   apiKey: string
 }
 
+export type SpeechSettings = {
+  inputEnabled: boolean
+  recognitionLanguage: string
+  autoSendAfterFinal: boolean
+  ttsEnabled: boolean
+  autoSpeakAssistant: boolean
+  ttsRate: number
+  ttsPitch: number
+  ttsVoiceName: string
+  provider: 'browser' | 'edge-tts'
+}
+
 export type Settings = {
   llm: LLMSettings
   imageGeneration: ImageGenerationSettings
   ocr: OcrSettings
   appearance: AppearanceSettings
   agent: AgentSettings
+  speech: SpeechSettings
   uapis: UapisSettings
 }
 
@@ -163,6 +176,7 @@ export type PublicSettings = {
   }
   appearance: AppearanceSettings
   agent: AgentSettings
+  speech: SpeechSettings
   ocr: {
     provider: OcrSettings['provider']
     customBaseUrl: string
@@ -189,5 +203,6 @@ export type SettingsPatch = {
   agent?: Partial<Omit<AgentSettings, 'morningBrief'>> & {
     morningBrief?: Partial<MorningBriefSettings>
   }
+  speech?: Partial<SpeechSettings>
   uapis?: Partial<UapisSettings>
 }

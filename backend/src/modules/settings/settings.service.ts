@@ -26,6 +26,7 @@ import type {
   Settings,
   PublicSettings,
   SettingsPatch,
+  SpeechSettings,
   UapisSettings,
 } from './settings.types.js'
 
@@ -76,6 +77,17 @@ const DEFAULT_SETTINGS: Settings = {
       enabled: false,
       time: '09:30',
     },
+  },
+  speech: {
+    inputEnabled: true,
+    recognitionLanguage: 'zh-CN',
+    autoSendAfterFinal: false,
+    ttsEnabled: true,
+    autoSpeakAssistant: true,
+    ttsRate: 1,
+    ttsPitch: 1,
+    ttsVoiceName: 'zh-CN-YunxiNeural',
+    provider: 'edge-tts',
   },
   ocr: {
     provider: 'uapis',
@@ -380,6 +392,50 @@ function normalizeOcrSettings(
   }
 }
 
+function normalizeSpeechSettings(
+  speech: Partial<SpeechSettings> | undefined,
+): SpeechSettings {
+  const current = speech ?? {}
+  return {
+    inputEnabled:
+      typeof current.inputEnabled === 'boolean'
+        ? current.inputEnabled
+        : DEFAULT_SETTINGS.speech.inputEnabled,
+    recognitionLanguage:
+      typeof current.recognitionLanguage === 'string' && current.recognitionLanguage.trim()
+        ? current.recognitionLanguage.trim()
+        : DEFAULT_SETTINGS.speech.recognitionLanguage,
+    autoSendAfterFinal:
+      typeof current.autoSendAfterFinal === 'boolean'
+        ? current.autoSendAfterFinal
+        : DEFAULT_SETTINGS.speech.autoSendAfterFinal,
+    ttsEnabled:
+      typeof current.ttsEnabled === 'boolean'
+        ? current.ttsEnabled
+        : DEFAULT_SETTINGS.speech.ttsEnabled,
+    autoSpeakAssistant:
+      typeof current.autoSpeakAssistant === 'boolean'
+        ? current.autoSpeakAssistant
+        : DEFAULT_SETTINGS.speech.autoSpeakAssistant,
+    ttsRate:
+      typeof current.ttsRate === 'number' && Number.isFinite(current.ttsRate)
+        ? Math.min(Math.max(current.ttsRate, 0.5), 2)
+        : DEFAULT_SETTINGS.speech.ttsRate,
+    ttsPitch:
+      typeof current.ttsPitch === 'number' && Number.isFinite(current.ttsPitch)
+        ? Math.min(Math.max(current.ttsPitch, 0), 2)
+        : DEFAULT_SETTINGS.speech.ttsPitch,
+    ttsVoiceName:
+      typeof current.ttsVoiceName === 'string' && current.ttsVoiceName.trim()
+        ? current.ttsVoiceName.trim()
+        : DEFAULT_SETTINGS.speech.ttsVoiceName,
+    provider:
+      current.provider === 'edge-tts' || current.provider === 'browser'
+        ? current.provider
+        : DEFAULT_SETTINGS.speech.provider,
+  }
+}
+
 function mergeSettings(base: Settings, partial: Partial<Settings>): Settings {
   return {
     llm: normalizeLlmSettings({ ...base.llm, ...(partial.llm ?? {}) }),
@@ -390,6 +446,7 @@ function mergeSettings(base: Settings, partial: Partial<Settings>): Settings {
     ocr: normalizeOcrSettings({ ...base.ocr, ...(partial.ocr ?? {}) }),
     appearance: { ...base.appearance, ...(partial.appearance ?? {}) },
     agent: { ...base.agent, ...(partial.agent ?? {}) },
+    speech: normalizeSpeechSettings({ ...base.speech, ...(partial.speech ?? {}) }),
     uapis: { ...base.uapis, ...(partial.uapis ?? {}) },
   }
 }
@@ -638,6 +695,7 @@ function toPublic(settings: Settings): PublicSettings {
     },
     appearance: settings.appearance,
     agent: settings.agent,
+    speech: settings.speech,
     ocr: {
       provider: settings.ocr.provider,
       customBaseUrl: settings.ocr.customBaseUrl,
@@ -783,6 +841,7 @@ export async function getSettings(): Promise<Settings> {
     imageGeneration: normalizeImageGenerationSettings(raw.imageGeneration),
     appearance: normalizeAppearanceSettings(raw.appearance),
     agent: normalizeAgentSettings(raw.agent),
+    speech: normalizeSpeechSettings(raw.speech),
     uapis: normalizeUapisSettings(raw.uapis),
   })
 }
@@ -840,6 +899,10 @@ export async function updateSettings(patch: SettingsPatch): Promise<PublicSettin
       ...(patch.appearance ?? {}),
     }),
     agent: normalizeAgentSettings(mergedAgent),
+    speech: normalizeSpeechSettings({
+      ...current.speech,
+      ...(patch.speech ?? {}),
+    }),
     uapis: {
       ...current.uapis,
       apiKey:

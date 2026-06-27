@@ -933,11 +933,16 @@
           <span class="num">§ 04</span>
           <h2>Collector Tasks</h2>
           <span class="meta" id="collector-count">— registered</span>
+          <span class="meta" id="collector-selected-count" style="margin-left:8px;color:var(--signal-red);display:none;">— selected</span>
+          <button class="btn" id="collector-export-xlsx" type="button" style="margin-left:auto;padding:2px 10px;font-size:10px;">📤 导出 Excel</button>
+          <button class="btn btn-secondary" id="collector-clear-sel" type="button" style="padding:2px 10px;font-size:10px;display:none;">CLEAR</button>
+          <button class="btn" id="collector-delete-sel" type="button" style="margin-left:4px;padding:2px 10px;font-size:10px;border-color:var(--signal-red);color:var(--signal-red);display:none;">🗑 删除选中</button>
         </div>
 
         <table class="protocols">
           <thead>
             <tr>
+              <th class="col-num" style="width:28px;"><input type="checkbox" id="collector-select-all" title="全选" style="cursor:pointer;" /></th>
               <th class="col-num">№</th>
               <th>Task ID</th>
               <th>Protocol</th>
@@ -951,7 +956,7 @@
             </tr>
           </thead>
           <tbody id="collector-tbody">
-            <tr><td colspan="8" class="empty-state">fetching…</td></tr>
+            <tr><td colspan="11" class="empty-state">fetching…</td></tr>
           </tbody>
         </table>
         <div class="field-help" style="margin-top: 8px;">⚠ Collector 任务由配置抽屉「MODBUS / OPC UA」tab 添加；此处只显示运行状态</div>
@@ -1196,9 +1201,20 @@
         </div>
         <div class="field">
           <label for="ua-node-id">Node ID</label>
-          <input id="ua-node-id" type="text" placeholder="ns=1;s=Temperature" />
-          <div class="field-help">OPC UA 节点标识符（命名空间 + 标识符）</div>
+          <input id="ua-node-id" type="text" placeholder="浏览服务器后选择，或填写实际 NodeId" />
+          <div class="field-help">OPC UA 节点标识符，建议通过节点浏览选择后加入采集</div>
         </div>
+        <div class="field-row">
+          <button class="btn" id="ua-browse-root" type="button" style="flex:1;">浏览节点</button>
+          <button class="btn" id="ua-browse-selected" type="button" style="flex:1;">浏览当前 NodeId</button>
+        </div>
+        <div id="ua-browse-out" style="font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--paper);border:1px solid var(--ink-4);min-height:56px;max-height:220px;overflow-y:auto;padding:6px 8px;margin-top:6px;white-space:normal;word-break:break-all;">先连接服务器，再点击浏览节点；双击变量节点可填入 NodeId。勾选后再点击"加入批量列表"。</div>
+        <div class="field-row" style="margin-top:4px;">
+          <button class="btn" id="ua-browse-select-vars" type="button" style="flex:1;padding:2px 8px;font-size:10px;">☑ 仅选变量节点</button>
+          <button class="btn" id="ua-browse-add-bulk" type="button" style="flex:1;padding:2px 8px;font-size:10px;">📋 加入 §C 批量列表</button>
+          <button class="btn" id="ua-browse-clear-bulk" type="button" style="flex:1;padding:2px 8px;font-size:10px;">✕ 清空批量列表</button>
+        </div>
+        <div id="ua-browse-progress" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:4px;min-height:14px;"></div>
         <div class="field-row">
           <div class="field">
             <label for="ua-interval">采集间隔（秒）</label>
@@ -1215,7 +1231,7 @@
         </div>
         <div class="field">
           <label for="ua-bulk">节点清单（每行一个）</label>
-          <textarea id="ua-bulk" rows="6" style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;background:var(--paper);border:1px solid var(--ink-4);resize:vertical;min-height:80px;" placeholder="格式: TAG  NODE_ID  INTERVAL  TABLE&#10;# 例:&#10;TI-101  ns=2;s=Device1.Temp    1.0  raw_data&#10;PI-201  ns=2;s=Device1.Pressure  2.0  raw_data&#10;FT-301  ns=2;s=Device1.Flow      1.0  raw_data"></textarea>
+          <textarea id="ua-bulk" rows="6" style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;background:var(--paper);border:1px solid var(--ink-4);resize:vertical;min-height:80px;" placeholder="格式: TAG  NODE_ID  INTERVAL  TABLE&#10;请填写浏览节点后确认的实际 NODE_ID，不使用示例默认值"></textarea>
           <div class="field-help">列以空格/Tab 分隔，省略列用默认值（INTERVAL=1.0, TABLE=raw_data）。以 <code>#</code> 开头为注释</div>
         </div>
         <div class="field-row">
@@ -1359,6 +1375,12 @@
         <div class="field-row">
           <button class="btn btn-primary" id="mq-bulk-go" type="button" style="flex:1;">BULK ADD</button>
           <button class="btn" id="mq-bulk-template" type="button" style="flex:0 0 auto;">填入示例</button>
+        </div>
+        <div class="field-row" style="margin-top:6px;">
+          <button class="btn" id="mq-bulk-import" type="button" style="flex:1;padding:2px 8px;font-size:10px;">📥 导入Excel</button>
+          <button class="btn" id="mq-bulk-export" type="button" style="flex:1;padding:2px 8px;font-size:10px;">📤 导出Excel</button>
+          <button class="btn" id="mq-bulk-tpl-xlsx" type="button" style="flex:1;padding:2px 8px;font-size:10px;">📋 下载模板</button>
+          <input id="mq-bulk-file" type="file" accept=".xlsx,.xls,.csv" style="display:none;" />
         </div>
         <div id="mq-bulk-progress" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:4px;min-height:14px;"></div>
 
@@ -1789,13 +1811,40 @@
     // ─────────────────────────────────────────
     // Render — collector tasks
     // ─────────────────────────────────────────
+    // Staged-delete: ids checked in the table, persisted across `refresh()`
+    // polls. Click 🗑 删除 N 项 to call /api/collector/delete for each.
+    const _stagedDelete = new Set()
+    const updateCollectorSelectionUI = () => {
+      const n = _stagedDelete.size
+      const countEl = document.getElementById('collector-selected-count')
+      const delBtn = document.getElementById('collector-delete-sel')
+      const clearBtn = document.getElementById('collector-clear-sel')
+      if (!countEl || !delBtn || !clearBtn) return
+      if (n === 0) {
+        countEl.style.display = 'none'
+        delBtn.style.display = 'none'
+        clearBtn.style.display = 'none'
+      } else {
+        countEl.textContent = `${n} selected`
+        countEl.style.display = ''
+        delBtn.textContent = `🗑 删除 ${n} 项`
+        delBtn.style.display = ''
+        clearBtn.style.display = ''
+      }
+    }
+
     const renderCollector = (resp) => {
       const tbody = document.getElementById('collector-tbody')
       const countEl = document.getElementById('collector-count')
       const tasks = resp?.tasks || []
+      // Drop staged ids that are no longer registered (e.g. already deleted).
+      for (const id of [..._stagedDelete]) {
+        if (!tasks.find((t) => t.id === id)) _stagedDelete.delete(id)
+      }
       if (tasks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="empty-state">no collector tasks — add one via MODBUS / OPC UA / MQTT tab</td></tr>'
+        tbody.innerHTML = '<tr><td colspan="11" class="empty-state">no collector tasks — add one via MODBUS / OPC UA / MQTT tab</td></tr>'
         countEl.textContent = '0 registered'
+        updateCollectorSelectionUI()
         return
       }
       countEl.textContent = `${tasks.length} registered`
@@ -1862,8 +1911,13 @@
         const action = running
           ? `<button data-task="${t.id}" data-action="stop" class="col-stop-btn" type="button" style="appearance:none;background:transparent;border:1px solid var(--signal-red);color:var(--signal-red);padding:1px 8px;cursor:pointer;font-size:10px;">STOP</button>`
           : `<button data-task="${t.id}" data-action="start" class="col-start-btn" type="button" style="appearance:none;background:transparent;border:1px solid var(--ok);color:var(--ok);padding:1px 8px;cursor:pointer;font-size:10px;">START</button>`
+        const staged = _stagedDelete.has(t.id)
+        const rowStyle = staged
+          ? 'background:rgba(220,80,80,0.08);text-decoration:line-through;opacity:0.6;'
+          : ''
         return `
-          <tr>
+          <tr data-task-row="${escAttr(t.id)}" style="${rowStyle}">
+            <td style="text-align:center;"><input type="checkbox" class="col-pick" data-task="${escAttr(t.id)}" ${staged ? 'checked' : ''} style="cursor:pointer;" /></td>
             <td class="col-num">${pad2(i + 1)}</td>
             <td><strong>${escHtml(t.id)}</strong></td>
             <td>${escHtml(proto)}</td>
@@ -1902,6 +1956,16 @@
           finally { btn.disabled = false }
         })
       })
+      // Staged-delete row checkboxes
+      tbody.querySelectorAll('.col-pick').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          const tid = cb.dataset.task
+          if (cb.checked) _stagedDelete.add(tid)
+          else _stagedDelete.delete(tid)
+          updateCollectorSelectionUI()
+        })
+      })
+      updateCollectorSelectionUI()
     }
 
     // ─────────────────────────────────────────
@@ -2327,6 +2391,137 @@
       return d
     }
 
+    const textId = (text) => String(text || '').trim().toLowerCase()
+      .replace(/^ns=\d+;[isgb]=/i, '')
+      .replace(/[^a-z0-9_]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 48)
+
+    const renderOpcuaBrowseNodes = (nodes, parentNodeId = '') => {
+      const out = document.getElementById('ua-browse-out')
+      if (!out) return
+      if (!nodes || nodes.length === 0) {
+        out.textContent = '该节点没有可浏览子节点'
+        return
+      }
+      out.innerHTML = ''
+      nodes.forEach((node) => {
+        const row = document.createElement('div')
+        row.style.cssText = 'display:grid;grid-template-columns:18px 1fr auto;gap:6px;align-items:center;border-bottom:1px solid var(--ink-4);padding:4px 0;cursor:pointer;'
+        row.title = '双击填入 NodeId；点击 浏览 查看子节点；勾选后点击"加入批量列表"'
+        const cb = document.createElement('input')
+        cb.type = 'checkbox'
+        cb.className = 'ua-browse-pick'
+        cb.dataset.nodeId = node.node_id || ''
+        cb.dataset.nodeName = node.display_name || node.node_id || ''
+        cb.style.cssText = 'width:14px;height:14px;margin:0;cursor:pointer;'
+        cb.addEventListener('click', (e) => e.stopPropagation())
+        const main = document.createElement('div')
+        const name = document.createElement('div')
+        name.textContent = node.display_name || node.node_id
+        name.style.cssText = 'font-weight:600;color:var(--ink-1);'
+        const meta = document.createElement('div')
+        meta.textContent = `${node.node_id || ''} · ${node.node_class || 'Unknown'}${node.data_type ? ' · ' + node.data_type : ''}`
+        meta.style.cssText = 'color:var(--ink-3);font-size:9px;'
+        main.appendChild(name)
+        main.appendChild(meta)
+        const actions = document.createElement('div')
+        actions.style.cssText = 'display:flex;gap:4px;'
+        const pick = document.createElement('button')
+        pick.type = 'button'
+        pick.className = 'btn'
+        pick.style.cssText = 'padding:1px 6px;font-size:9px;'
+        pick.textContent = '选择'
+        pick.addEventListener('click', (e) => {
+          e.stopPropagation()
+          pickOpcuaNode(node)
+        })
+        const browse = document.createElement('button')
+        browse.type = 'button'
+        browse.className = 'btn'
+        browse.style.cssText = 'padding:1px 6px;font-size:9px;'
+        browse.textContent = '浏览'
+        browse.addEventListener('click', (e) => {
+          e.stopPropagation()
+          browseOpcuaNodes(node.node_id)
+        })
+        actions.appendChild(pick)
+        actions.appendChild(browse)
+        row.appendChild(cb)
+        row.appendChild(main)
+        row.appendChild(actions)
+        row.addEventListener('dblclick', () => pickOpcuaNode(node))
+        out.appendChild(row)
+      })
+      document.getElementById('ua-browse-progress').textContent = parentNodeId
+        ? `当前: ${parentNodeId}（${nodes.length} 个子节点，勾选后加入批量列表）`
+        : `当前: Objects（${nodes.length} 个子节点，勾选后加入批量列表）`
+    }
+
+    // 把浏览面板里勾选的节点追加到 §C 批量 textarea，格式: TAG  NODE_ID  1.0  raw_data
+    const appendOpcuaBrowseToBulk = ({ replace = false } = {}) => {
+      const checked = Array.from(document.querySelectorAll('.ua-browse-pick:checked'))
+      if (checked.length === 0) {
+        showToast('✕ 请先勾选要加入批量列表的节点', 'error')
+        return
+      }
+      const tagify = (raw) => textId(raw).replace(/^_+|_+$/g, '') || `ua_${Date.now()}`
+      const rows = checked.map((cb) => {
+        const tag = tagify(cb.dataset.nodeName)
+        const nodeId = cb.dataset.nodeId
+        return `${tag}  ${nodeId}  1.0  raw_data`
+      })
+      const ta = document.getElementById('ua-bulk')
+      const existing = ta.value.replace(/\s+$/, '')
+      const next = replace ? rows.join('\n') : (existing ? `${existing}\n${rows.join('\n')}` : rows.join('\n'))
+      ta.value = next
+      showToast(`✓ 已${replace ? '替换' : '追加'} ${rows.length} 行到批量列表`, 'success')
+      setBulkProgress('ua-bulk-progress', `已${replace ? '替换' : '追加'} ${rows.length} 行；点 BULK ADD 生效`, 'success')
+    }
+
+    // 只勾选 variable 节点（OPC UA Variable = data-bearing leaf）
+    const selectOnlyVariableNodes = () => {
+      const rows = document.querySelectorAll('#ua-browse-out > div')
+      let picked = 0
+      rows.forEach((row) => {
+        const meta = row.querySelectorAll('div')
+        const text = row.textContent || ''
+        // NodeClass 1 = Object, 2 = Variable, 4 = Method. 仅勾选 Variable。
+        const isVar = /Variable/.test(text) && !/VariableType/.test(text)
+        const cb = row.querySelector('.ua-browse-pick')
+        if (cb && isVar) { cb.checked = true; picked++ } else if (cb) { cb.checked = false }
+      })
+      showToast(`✓ 已勾选 ${picked} 个变量节点`, picked ? 'success' : '')
+    }
+
+    const pickOpcuaNode = (node) => {
+      document.getElementById('ua-node-id').value = node.node_id || ''
+      const taskId = document.getElementById('ua-task-id')
+      if (taskId && !taskId.value.trim()) {
+        taskId.value = `ua_${textId(node.display_name || node.node_id) || Date.now()}`
+      }
+      showToast(`✓ 已选择 ${node.display_name || node.node_id}`, 'success')
+    }
+
+    const browseOpcuaNodes = async (nodeId = null) => {
+      const progress = document.getElementById('ua-browse-progress')
+      try {
+        progress.textContent = '浏览中…'
+        const url = document.getElementById('ua-url').value.trim()
+        if (!url) throw new Error('OPC UA 服务器端点 URL 不能为空')
+        const status = await api('/industrial-gateway/api/opcua/status')
+        if (!status?.connected || status?.config?.url !== url) {
+          await applyOpcua()
+        }
+        const body = nodeId ? { node_id: nodeId, depth: 0 } : { depth: 0 }
+        const data = await postJSON('/industrial-gateway/api/opcua/browse', body)
+        renderOpcuaBrowseNodes(data.children || [], nodeId || '')
+      } catch (e) {
+        progress.textContent = `✕ ${e.message}`
+        showToast(`✕ OPC UA 浏览失败: ${e.message}`, 'error')
+      }
+    }
+
     // ── Modbus: connect driver + add/start collector task ──
     const applyModbus = async () => {
       const host = document.getElementById('mb-host').value.trim() || '127.0.0.1'
@@ -2365,7 +2560,8 @@
 
     // ── OPC UA: connect + collector task ──
     const applyOpcua = async () => {
-      const url = document.getElementById('ua-url').value.trim() || 'opc.tcp://127.0.0.1:4840'
+      const url = document.getElementById('ua-url').value.trim()
+      if (!url) throw new Error('OPC UA 服务器端点 URL 不能为空')
       const timeout = parseFloat(document.getElementById('ua-timeout').value) || 5.0
       const user = document.getElementById('ua-user').value.trim()
       const pass = document.getElementById('ua-pass').value
@@ -2377,6 +2573,8 @@
 
       const taskId = document.getElementById('ua-task-id').value.trim()
       const nodeId = document.getElementById('ua-node-id').value.trim()
+      if (taskId && !nodeId) throw new Error('OPC UA 采集任务已填写任务 ID 时，NodeId 不能为空')
+      if (!taskId && nodeId) throw new Error('OPC UA 采集任务已填写 NodeId 时，任务 ID 不能为空')
       if (taskId && nodeId) {
         const interval = parseFloat(document.getElementById('ua-interval').value) || 1.0
         const table = document.getElementById('ua-table').value.trim() || 'raw_data'
@@ -2570,6 +2768,41 @@ ALARM     device/alarm        json  value  ascii 1.0  device_data
       return out
     }
 
+    // 把 "TAG_[001..100]" / "ns=1;i=[10..109]" 这种范围语法展开成多条。
+    // 1. 文本里 [start..end] 才会展开；单独一个值则保持原样
+    // 2. TAG 范围与 NODE_ID 范围按 zip 配对；若只有一个有范围，另一个广播到所有行
+    const expandRangeToken = (token, kind) => {
+      const m = String(token || '').match(/^(.*?)\[(\d+)\.\.(\d+)\](.*)$/)
+      if (!m) return { values: [token], expanded: false }
+      const [, head, s, e, tail] = m
+      const start = parseInt(s, 10), end = parseInt(e, 10)
+      if (isNaN(start) || isNaN(end) || end < start) return { values: [token], expanded: false }
+      const pad = s.length
+      const out = []
+      for (let i = start; i <= end; i++) out.push(`${head}${String(i).padStart(pad, '0')}${tail}`)
+      return { values: out, expanded: true }
+    }
+
+    const expandBulkRow = (it) => {
+      if (!it || !it.cols || it.cols.length < 2) return [it]
+      const tagR = expandRangeToken(it.cols[0], 'tag')
+      const nodeR = expandRangeToken(it.cols[1], 'node')
+      if (!tagR.expanded && !nodeR.expanded) return [it]
+      const count = Math.max(tagR.values.length, nodeR.values.length)
+      if (tagR.values.length > 1 && nodeR.values.length > 1 &&
+          tagR.values.length !== nodeR.values.length) {
+        return [{ ...it, error: `TAG 范围(${tagR.values.length}) 与 NODE_ID 范围(${nodeR.values.length}) 数量不一致` }]
+      }
+      const rows = []
+      for (let i = 0; i < count; i++) {
+        const tag = tagR.values.length === 1 ? tagR.values[0] : tagR.values[i]
+        const nodeId = nodeR.values.length === 1 ? nodeR.values[0] : nodeR.values[i]
+        const rest = it.cols.slice(2)
+        rows.push({ lineNo: it.lineNo, cols: [tag, nodeId, ...rest], expanded: true })
+      }
+      return rows
+    }
+
     const setBulkProgress = (id, text, mood) => {
       const el = document.getElementById(id)
       if (!el) return
@@ -2581,18 +2814,39 @@ ALARM     device/alarm        json  value  ascii 1.0  device_data
 
     // 通用串行执行器 + 进度回报
     const runBulkAdd = async (items, buildTask, doAdd, doStart, progressId, label) => {
-      setBulkProgress(progressId, `准备 ${items.length} 个 ${label}…`, '')
+      // 先展开 TAG / NODE_ID 范围语法（如果条目里有 [start..end]）
+      const expanded = []
+      for (const it of items) {
+        const rows = expandBulkRow(it)
+        for (const r of rows) {
+          if (r.error) {
+            expanded.push({ ...r, _error: r.error })
+          } else {
+            expanded.push(r)
+          }
+        }
+      }
+      const expandedCount = expanded.filter(e => e.expanded).length
+      const labels = expandedCount > 0
+        ? `${label}（已展开范围，共 ${expanded.length} 条）`
+        : label
+      setBulkProgress(progressId, `准备 ${expanded.length} 个 ${labels}…`, '')
       let ok = 0, fail = 0
       const errors = []
-      for (let i = 0; i < items.length; i++) {
-        const it = items[i]
+      for (let i = 0; i < expanded.length; i++) {
+        const it = expanded[i]
+        if (it._error) {
+          fail++
+          errors.push(`#${it.lineNo} ${it._error}`)
+          continue
+        }
         const task = buildTask(it, i)
         if (!task) {
           fail++
           errors.push(`#${it.lineNo} 参数错误`)
           continue
         }
-        setBulkProgress(progressId, `${i + 1}/${items.length} 添加中… ${task.id}`, '')
+        setBulkProgress(progressId, `${i + 1}/${expanded.length} 添加中… ${task.id}`, '')
         try {
           await doAdd(task)
           if (doStart) {
@@ -2714,7 +2968,12 @@ ALARM     device/alarm        json  value  ascii 1.0  device_data
         return
       }
       // 共享驱动参数（来自 § A）
-      const url = document.getElementById('ua-url').value.trim() || 'opc.tcp://127.0.0.1:4840'
+      const url = document.getElementById('ua-url').value.trim()
+      if (!url) {
+        setBulkProgress('ua-bulk-progress', '✕ OPC UA 服务器端点 URL 不能为空', 'error')
+        showToast('✕ OPC UA 服务器端点 URL 不能为空', 'error')
+        return
+      }
       const timeout = parseFloat(document.getElementById('ua-timeout').value) || 5.0
       const user = document.getElementById('ua-user').value.trim()
       const pass = document.getElementById('ua-pass').value
@@ -2736,7 +2995,9 @@ ALARM     device/alarm        json  value  ascii 1.0  device_data
 
       const buildTask = (it) => {
         const [tag, nodeId, intervalStr, tableStr] = it.cols
-        if (!tag || !nodeId) return null
+        if (!tag || !nodeId) {
+          throw new Error(`第 ${it.lineNo} 行缺少 TAG 或 NODE_ID`)
+        }
         const interval = parseFloat(intervalStr) || 1.0
         const table = (useSharedTable || !tableStr) ? sharedTable : tableStr
         return {
@@ -2780,10 +3041,17 @@ DI-105  00005   10  bit:0 ABCD  coils    1.0  raw_data
 `
     const UA_BULK_TEMPLATE = `# OPC UA 批量节点模板
 # 格式: TAG  NODE_ID  INTERVAL  TABLE
-TI-101  ns=2;s=Device1.Temp      1.0  raw_data
-PI-201  ns=2;s=Device1.Pressure  1.0  raw_data
-FT-301  ns=2;s=Device1.Flow      2.0  raw_data
-LI-401  ns=2;s=Device1.Level     5.0  raw_data
+# 请先连接 OPC UA 服务器并通过浏览节点确认真实 NODE_ID，再填入下面行。
+#
+# 100 点批量示例（用 [start..end] 展开；TAG 与 NODE_ID 同时有范围时按 zip 配对）：
+#   TI-101_[001..100]  ns=1;i=[10..109]  1.0  raw_data
+# 上行会自动展开为 100 条：TI-101_001..ns=1;i=10 .. TI-101_100..ns=1;i=109
+#
+# 仅 TAG 有范围（所有节点复用同一 NODE_ID）：
+#   AI_[001..050]  ns=2;s=Channel1.Value  1.0  raw_data
+#
+# 单点格式（请替换为现场实际值）：
+# TAG001  ns=<namespace>;<type>=<identifier>  1.0  raw_data
 `
 
     document.getElementById('mb-bulk-go').addEventListener('click', async () => {
@@ -2811,6 +3079,141 @@ LI-401  ns=2;s=Device1.Level     5.0  raw_data
     document.getElementById('ua-bulk-template').addEventListener('click', () => {
       document.getElementById('ua-bulk').value = UA_BULK_TEMPLATE
       showToast('✓ 已填充 OPC UA 模板（请改 NODE_ID）', '')
+    })
+    document.getElementById('ua-browse-root')?.addEventListener('click', () => browseOpcuaNodes(null))
+    document.getElementById('ua-browse-selected')?.addEventListener('click', () => {
+      const nodeId = document.getElementById('ua-node-id').value.trim()
+      if (!nodeId) {
+        showToast('✕ 先选择或填写 NodeId', 'error')
+        return
+      }
+      browseOpcuaNodes(nodeId)
+    })
+    document.getElementById('ua-browse-select-vars')?.addEventListener('click', selectOnlyVariableNodes)
+    document.getElementById('ua-browse-add-bulk')?.addEventListener('click', () => appendOpcuaBrowseToBulk({ replace: false }))
+    document.getElementById('ua-browse-clear-bulk')?.addEventListener('click', () => {
+      const ta = document.getElementById('ua-bulk')
+      if (!ta.value.trim()) return
+      if (!confirm('确认清空 §C 批量列表？')) return
+      ta.value = ''
+      showToast('✓ 已清空批量列表', 'success')
+      setBulkProgress('ua-bulk-progress', '批量列表已清空', '')
+    })
+
+    // ── Collector Tasks: 勾选行 → 批量删除 (staged delete) ──
+    document.getElementById('collector-select-all')?.addEventListener('change', (e) => {
+      const checked = e.target.checked
+      document.querySelectorAll('#collector-tbody .col-pick').forEach((cb) => {
+        cb.checked = checked
+        const tid = cb.dataset.task
+        if (checked) _stagedDelete.add(tid); else _stagedDelete.delete(tid)
+      })
+      updateCollectorSelectionUI()
+    })
+    document.getElementById('collector-clear-sel')?.addEventListener('click', () => {
+      _stagedDelete.clear()
+      document.querySelectorAll('#collector-tbody .col-pick').forEach((cb) => { cb.checked = false })
+      const sa = document.getElementById('collector-select-all')
+      if (sa) sa.checked = false
+      updateCollectorSelectionUI()
+    })
+    document.getElementById('collector-delete-sel')?.addEventListener('click', async () => {
+      if (_stagedDelete.size === 0) return
+      const ids = [..._stagedDelete]
+      const btn = document.getElementById('collector-delete-sel')
+      const orig = btn.textContent
+      btn.disabled = true
+      btn.textContent = `🗑 同步删除 ${ids.length} 项…`
+      let ok = 0, fail = 0
+      const errors = []
+      for (const tid of ids) {
+        try {
+          const r = await postJSON(`/industrial-gateway/api/collector/delete?task_id=${encodeURIComponent(tid)}`)
+          if (r?.ok) { ok++; _stagedDelete.delete(tid) }
+          else { fail++; errors.push(`${tid}: ${JSON.stringify(r)}`) }
+        } catch (e) { fail++; errors.push(`${tid}: ${e.message}`) }
+      }
+      btn.disabled = false
+      btn.textContent = orig
+      if (fail === 0) {
+        showToast(`✓ 已同步删除 ${ok} 项`, 'success')
+      } else {
+        showToast(`✕ ${ok} ok / ${fail} fail：${errors.slice(0, 3).join('; ')}`, 'error')
+      }
+      setTimeout(refresh, 300)
+    })
+
+    // ── 导出采集点 → 多 sheet xlsx（按协议分 sheet，全部已注册任务） ──
+    const exportCollectorAsXlsx = async () => {
+      if (typeof XLSX === 'undefined') {
+        showToast('✕ SheetJS 未加载', 'error'); return
+      }
+      const resp = await api('/industrial-gateway/api/collector/status')
+      const tasks = resp?.tasks || []
+      if (tasks.length === 0) {
+        showToast('✕ 暂无采集点', 'error'); return
+      }
+      // 协议 → 列定义。列顺序：通用 + 协议特有（便于 Excel 排序/筛选）
+      const COLS = {
+        modbus: ['TAG','PROTOCOL','TABLE','INTERVAL','HOST','PORT','UNIT_ID','REGISTER','ADDR','COUNT','DTYPE','ENDIAN','BIT_INDEX','RUNNING','POINTS'],
+        opcua:  ['TAG','PROTOCOL','TABLE','INTERVAL','URL','NODE_ID','RUNNING','POINTS'],
+        mqtt:   ['TAG','PROTOCOL','TABLE','INTERVAL','BROKER_HOST','BROKER_PORT','TOPIC','QOS','PAYLOAD','FIELD','DTYPE','USERNAME','CLIENT_ID','RUNNING','POINTS'],
+      }
+      const rowFor = (t) => {
+        const base = [t.id, t.protocol, t.table, t.interval]
+        if (t.protocol === 'opcua') {
+          return [...base, t.ua_url || '', t.ua_node_id || '', t.running ? 'RUN' : 'STOP', t.points ?? 0]
+        }
+        if (t.protocol === 'mqtt') {
+          return [...base, t.mq_broker_host || '', t.mq_broker_port ?? '',
+                  t.mq_topic || '', t.mq_qos ?? 0, t.mq_payload || '', t.mq_field || '',
+                  t.dtype || '', t.mq_username || '', t.mq_client_id || '',
+                  t.running ? 'RUN' : 'STOP', t.points ?? 0]
+        }
+        // modbus (default)
+        return [...base, t.mb_host || '', t.mb_port ?? 502, t.mb_unit ?? 1,
+                t.mb_register || 'holding', t.mb_address ?? 0, t.mb_count ?? 1,
+                t.dtype || 'u16', t.endian || 'ABCD', t.bit_index ?? 0,
+                t.running ? 'RUN' : 'STOP', t.points ?? 0]
+      }
+      const wb = XLSX.utils.book_new()
+      const counts = { modbus: 0, opcua: 0, mqtt: 0, other: 0 }
+      for (const proto of ['modbus', 'opcua', 'mqtt']) {
+        const subset = tasks.filter((t) => t.protocol === proto)
+        if (subset.length === 0) continue
+        const rows = [COLS[proto], ...subset.map(rowFor)]
+        const ws = XLSX.utils.aoa_to_sheet(rows)
+        ws['!cols'] = COLS[proto].map((c) => ({ wch: c.length > 6 ? 28 : 12 }))
+        XLSX.utils.book_append_sheet(wb, ws, proto.toUpperCase())
+        counts[proto] = subset.length
+      }
+      // 其他未识别协议兜底放 "OTHER" sheet
+      const others = tasks.filter((t) => !['modbus', 'opcua', 'mqtt'].includes(t.protocol))
+      if (others.length > 0) {
+        const ws = XLSX.utils.aoa_to_sheet([
+          ['TAG','PROTOCOL','TABLE','INTERVAL','RUNNING','POINTS'],
+          ...others.map((t) => [t.id, t.protocol, t.table, t.interval,
+                                t.running ? 'RUN' : 'STOP', t.points ?? 0]),
+        ])
+        ws['!cols'] = [{wch:12},{wch:10},{wch:14},{wch:8},{wch:8},{wch:8}]
+        XLSX.utils.book_append_sheet(wb, ws, 'OTHER')
+        counts.other = others.length
+      }
+      const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)
+      const filename = `1052os-collector-points-${ts}.xlsx`
+      XLSX.writeFile(wb, filename)
+      const total = Object.entries(counts).filter(([_, n]) => n > 0)
+                                .map(([p, n]) => `${p}=${n}`).join(' · ')
+      showToast(`✓ 已导出 ${tasks.length} 个采集点 (${total}) → ${filename}`, 'success')
+    }
+    document.getElementById('collector-export-xlsx')?.addEventListener('click', async () => {
+      const btn = document.getElementById('collector-export-xlsx')
+      btn.disabled = true
+      const orig = btn.textContent
+      btn.textContent = '导出中…'
+      try { await exportCollectorAsXlsx() }
+      catch (e) { showToast(`✕ ${e.message}`, 'error') }
+      finally { btn.disabled = false; btn.textContent = orig }
     })
 
     // ── MQTT 采集任务：单条 / 批量 ──
@@ -2860,6 +3263,7 @@ LI-401  ns=2;s=Device1.Level     5.0  raw_data
     // 已知表头集合（用于智能识别 header 行）
     const MB_HEADERS = ['TAG', 'ADDR', 'COUNT', 'DTYPE', 'ENDIAN', 'REGISTER', 'INTERVAL', 'TABLE']
     const UA_HEADERS = ['TAG', 'NODE_ID', 'INTERVAL', 'TABLE']
+    const MQ_HEADERS = ['TAG', 'TOPIC', 'PAYLOAD', 'FIELD', 'DTYPE', 'INTERVAL', 'TABLE']
 
     // 把 Array<Array<cell>> 转成 textarea 文本格式
     // - 首行若是已知表头则跳过
@@ -3085,11 +3489,36 @@ LI-401  ns=2;s=Device1.Level     5.0  raw_data
     document.getElementById('ua-bulk-tpl-xlsx').addEventListener('click', () => {
       downloadTemplateXlsx(
         UA_HEADERS,
-        ['TI-101', 'ns=2;s=Device1.Temp', 1.0, 'raw_data'],
+        ['TAG001', 'ns=<namespace>;<type>=<identifier>', 1.0, 'raw_data'],
         'opcua-nodes-template.xlsx',
         'OPC_UA',
         'ua-bulk-progress',
         'OPC UA'
+      )
+    })
+
+    // ── MQTT Excel 按钮绑定 ──
+    document.getElementById('mq-bulk-import').addEventListener('click', () => {
+      document.getElementById('mq-bulk-file').click()
+    })
+    document.getElementById('mq-bulk-file').addEventListener('change', (e) => {
+      const file = e.target.files[0]
+      if (!file) return
+      importXlsxToTextarea(file, 'mq-bulk', MQ_HEADERS, 'mq-bulk-progress', 'MQTT')
+      e.target.value = ''
+    })
+    document.getElementById('mq-bulk-export').addEventListener('click', () => {
+      const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')
+      exportTextareaAsXlsx('mq-bulk', MQ_HEADERS, `mqtt-sources-${ts}.xlsx`, 'MQTT', 'mq-bulk-progress')
+    })
+    document.getElementById('mq-bulk-tpl-xlsx').addEventListener('click', () => {
+      downloadTemplateXlsx(
+        MQ_HEADERS,
+        ['TAG001', 'device/<sensor>', 'json', 'value', 'f32', 1.0, 'device_data'],
+        'mqtt-sources-template.xlsx',
+        'MQTT',
+        'mq-bulk-progress',
+        'MQTT'
       )
     })
 

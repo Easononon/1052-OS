@@ -65,6 +65,9 @@ describe('classifyToolSafety', () => {
       'sql_server_list',
       'orchestration_list',
       'orchestration_logs',
+      'industrial_get_realtime_snapshot',
+      'industrial_get_gateway_parameters',
+      'industrial_scan_modbus_registers',
     ]
 
     for (const name of readOnlyNames) {
@@ -156,9 +159,9 @@ describe('classifyToolSafety', () => {
       // image / pkm / intel
       'image_generate',
       'pkm_reindex',
-      // wechat
-      'wechat_desktop_send_message',
-      'wechat_group_memory_write',
+      // industrial gateway config
+      'industrial_update_modbus_config',
+      'industrial_update_collector_task',
       // feishu
       // (none of the current feishu tools are writes, but futures `feishu_send_message`
       //  would be caught by _send pattern — exercised in the pattern test below)

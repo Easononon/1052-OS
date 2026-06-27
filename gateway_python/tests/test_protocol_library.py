@@ -37,6 +37,29 @@ def test_build_mqtt_protocol_flow_posts_to_td_insert():
     assert any(n["type"] == "http request" and n["url"].endswith("/api/td/insert") for n in nodes)
 
 
+def test_opcua_protocol_defaults_are_editable_skeletons():
+    protocol = next(p for p in list_protocols() if p["name"] == "opcua-read")
+    defaults = {p["key"]: p["default"] for p in protocol["param_schema"]}
+    assert defaults["endpoint"] == ""
+    assert defaults["node_id"] == ""
+    assert "Device1" not in repr(protocol)
+    assert "opc.tcp://127.0.0.1:4840" not in repr(protocol)
+
+
+def test_build_opcua_protocol_flow_uses_explicit_params():
+    nodes = build_protocol_flow(
+        "opcua-read",
+        endpoint="opc.tcp://192.168.10.112:4840",
+        node_id="ns=1;i=10",
+        device="opcua_112",
+        tag="pv_10",
+    )
+    text = repr(nodes)
+    assert "opc.tcp://192.168.10.112:4840" in text
+    assert "ns=1;i=10" in text
+    assert "Device1" not in text
+
+
 def test_build_hj212_2025_protocol_flow_uses_params():
     nodes = build_protocol_flow("hj212-2025", mn="ABCDEF0123456789ABCDEF01", base_url="http://mock:5906")
     assert any(n["type"] == "tab" and n["label"] == "protocol · hj212-2025" for n in nodes)

@@ -10,7 +10,7 @@ from asyncua import Client as OpcuaClient
 
 @dataclass
 class OpcuaConfig:
-    url: str = "opc.tcp://127.0.0.1:4840"
+    url: str = ""
     timeout: float = 5.0
     username: str | None = None
     password: str | None = None
@@ -26,7 +26,7 @@ class OpcuaConfig:
     @classmethod
     def from_dict(cls, d: dict) -> "OpcuaConfig":
         return cls(
-            url=d.get("url", "opc.tcp://127.0.0.1:4840"),
+            url=d.get("url", ""),
             timeout=d.get("timeout", 5.0),
             username=d.get("username"),
             password=d.get("password"),

@@ -40,10 +40,15 @@ def _broker_node(broker: str, port: int) -> dict:
 
 
 def _tab_node(protocol: str) -> dict:
+    labels = {
+        "modbus": "Modbus",
+        "opcua": "OPC UA",
+        "mqtt": "MQTT",
+    }
     return {
         "id": f"tab_{protocol}",
         "type": "tab",
-        "label": protocol.upper() if protocol == "opcua" else protocol.capitalize(),
+        "label": labels.get(protocol, protocol.upper()),
         "disabled": False,
         "info": "",
     }
@@ -91,26 +96,26 @@ def _debug_node(node_id: str, tab_id: str, x: int, y: int) -> dict:
 def build_flows_json(tasks: dict, broker: str = "localhost", port: int = 1883) -> list[dict]:
     """Generate a Node-RED flows.json array from collector tasks.
 
-    Layout: 4 nodes per row, 200px column / 80px row. OPC UA group offset +400 in y.
+    Layout: 4 nodes per row, 200px column / 80px row.
     Returns a list of node dicts; safe to serialize with json.dumps().
     """
     flows: list[dict] = []
-    flows.append(_tab_node("modbus"))
-    flows.append(_tab_node("opcua"))
+    protocols = ["modbus", "opcua", "mqtt"]
+    for protocol in protocols:
+        flows.append(_tab_node(protocol))
     flows.append(_broker_node(broker, port))
 
-    seen_ids: set[str] = {"tab_modbus", "tab_opcua", "brk_1052os"}
-
-    modbus_tasks = []
-    opcua_tasks = []
+    seen_ids: set[str] = {*(f"tab_{protocol}" for protocol in protocols), "brk_1052os"}
+    tasks_by_protocol = {protocol: [] for protocol in protocols}
     for tid in sorted(tasks.keys()):
         t = tasks[tid]
-        (modbus_tasks if t.protocol == "modbus" else opcua_tasks).append(t)
+        if t.protocol in tasks_by_protocol:
+            tasks_by_protocol[t.protocol].append(t)
 
     def _emit(t, idx, tab_id, y_offset=0):
         device = t.device or t.table
         site = t.site
-        topic = f"1052os/{site}/{device}/{t.id}/value"
+        topic = t.mq_topic if t.protocol == "mqtt" and t.mq_topic else f"1052os/{site}/{device}/{t.id}/value"
         in_id = _safe_id("in", site, device, t.id, _seen=seen_ids)
         dbg_id = _safe_id("dbg", site, device, t.id, _seen=seen_ids)
         col, row = idx % 4, idx // 4
@@ -119,9 +124,11 @@ def build_flows_json(tasks: dict, broker: str = "localhost", port: int = 1883) -
                                    "brk_1052os", x, y, dbg_id))
         flows.append(_debug_node(dbg_id, tab_id, x + 190, y))
 
-    for i, t in enumerate(modbus_tasks):
+    for i, t in enumerate(tasks_by_protocol["modbus"]):
         _emit(t, i, "tab_modbus")
-    for i, t in enumerate(opcua_tasks):
+    for i, t in enumerate(tasks_by_protocol["opcua"]):
         _emit(t, i, "tab_opcua", y_offset=400)
+    for i, t in enumerate(tasks_by_protocol["mqtt"]):
+        _emit(t, i, "tab_mqtt", y_offset=800)
 
     return flows

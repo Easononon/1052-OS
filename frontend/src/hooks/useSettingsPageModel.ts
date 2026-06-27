@@ -94,6 +94,26 @@ export interface UseSettingsPageModelReturn {
   morningBriefTime: string
   setMorningBriefTime: Dispatch<SetStateAction<string>>
 
+  // Speech
+  speechInputEnabled: boolean
+  setSpeechInputEnabled: Dispatch<SetStateAction<boolean>>
+  speechRecognitionLanguage: string
+  setSpeechRecognitionLanguage: Dispatch<SetStateAction<string>>
+  speechAutoSendAfterFinal: boolean
+  setSpeechAutoSendAfterFinal: Dispatch<SetStateAction<boolean>>
+  speechTtsEnabled: boolean
+  setSpeechTtsEnabled: Dispatch<SetStateAction<boolean>>
+  speechAutoSpeakAssistant: boolean
+  setSpeechAutoSpeakAssistant: Dispatch<SetStateAction<boolean>>
+  speechTtsProvider: PublicSettings['speech']['provider']
+  setSpeechTtsProvider: Dispatch<SetStateAction<PublicSettings['speech']['provider']>>
+  speechTtsRate: number
+  setSpeechTtsRate: Dispatch<SetStateAction<number>>
+  speechTtsPitch: number
+  setSpeechTtsPitch: Dispatch<SetStateAction<number>>
+  speechTtsVoiceName: string
+  setSpeechTtsVoiceName: Dispatch<SetStateAction<string>>
+
   // Save flow
   saveState: SaveState
   error: string
@@ -149,6 +169,15 @@ export interface SettingsPatchInputs {
   autoCompactThreshold: number
   morningBriefEnabled: boolean
   morningBriefTime: string
+  speechInputEnabled: boolean
+  speechRecognitionLanguage: string
+  speechAutoSendAfterFinal: boolean
+  speechTtsEnabled: boolean
+  speechAutoSpeakAssistant: boolean
+  speechTtsProvider: PublicSettings['speech']['provider']
+  speechTtsRate: number
+  speechTtsPitch: number
+  speechTtsVoiceName: string
 }
 
 export function buildSettingsPatch(inputs: SettingsPatchInputs): SettingsPatch {
@@ -197,6 +226,17 @@ export function buildSettingsPatch(inputs: SettingsPatchInputs): SettingsPatch {
         enabled: inputs.morningBriefEnabled,
         time: inputs.morningBriefTime,
       },
+    },
+    speech: {
+      inputEnabled: inputs.speechInputEnabled,
+      recognitionLanguage: inputs.speechRecognitionLanguage.trim() || 'zh-CN',
+      autoSendAfterFinal: inputs.speechAutoSendAfterFinal,
+      ttsEnabled: inputs.speechTtsEnabled,
+      autoSpeakAssistant: inputs.speechAutoSpeakAssistant,
+      ttsRate: inputs.speechTtsRate,
+      ttsPitch: inputs.speechTtsPitch,
+      ttsVoiceName: inputs.speechTtsVoiceName.trim(),
+      provider: inputs.speechTtsProvider,
     },
   }
 }
@@ -254,6 +294,17 @@ export function useSettingsPageModel(): UseSettingsPageModelReturn {
   const [morningBriefEnabled, setMorningBriefEnabled] = useState(false)
   const [morningBriefTime, setMorningBriefTime] = useState('09:30')
 
+  // Speech state
+  const [speechInputEnabled, setSpeechInputEnabled] = useState(true)
+  const [speechRecognitionLanguage, setSpeechRecognitionLanguage] = useState('zh-CN')
+  const [speechAutoSendAfterFinal, setSpeechAutoSendAfterFinal] = useState(false)
+  const [speechTtsEnabled, setSpeechTtsEnabled] = useState(true)
+  const [speechAutoSpeakAssistant, setSpeechAutoSpeakAssistant] = useState(true)
+  const [speechTtsProvider, setSpeechTtsProvider] = useState<PublicSettings['speech']['provider']>('edge-tts')
+  const [speechTtsRate, setSpeechTtsRate] = useState(1)
+  const [speechTtsPitch, setSpeechTtsPitch] = useState(1)
+  const [speechTtsVoiceName, setSpeechTtsVoiceName] = useState('zh-CN-YunxiNeural')
+
   // Save flow
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [error, setError] = useState('')
@@ -292,6 +343,15 @@ export function useSettingsPageModel(): UseSettingsPageModelReturn {
     setAutoCompactThreshold(settings.agent.autoCompactThreshold)
     setMorningBriefEnabled(settings.agent.morningBrief.enabled)
     setMorningBriefTime(settings.agent.morningBrief.time)
+    setSpeechInputEnabled(settings.speech.inputEnabled)
+    setSpeechRecognitionLanguage(settings.speech.recognitionLanguage)
+    setSpeechAutoSendAfterFinal(settings.speech.autoSendAfterFinal)
+    setSpeechTtsEnabled(settings.speech.ttsEnabled)
+    setSpeechAutoSpeakAssistant(settings.speech.autoSpeakAssistant)
+    setSpeechTtsProvider(settings.speech.provider)
+    setSpeechTtsRate(settings.speech.ttsRate)
+    setSpeechTtsPitch(settings.speech.ttsPitch)
+    setSpeechTtsVoiceName(settings.speech.ttsVoiceName)
     setUiLanguage(settings.appearance.language)
   }, [])
 
@@ -403,6 +463,15 @@ export function useSettingsPageModel(): UseSettingsPageModelReturn {
         autoCompactThreshold,
         morningBriefEnabled,
         morningBriefTime,
+        speechInputEnabled,
+        speechRecognitionLanguage,
+        speechAutoSendAfterFinal,
+        speechTtsEnabled,
+        speechAutoSpeakAssistant,
+        speechTtsProvider,
+        speechTtsRate,
+        speechTtsPitch,
+        speechTtsVoiceName,
       }),
     [
       baseUrl,
@@ -438,6 +507,15 @@ export function useSettingsPageModel(): UseSettingsPageModelReturn {
       autoCompactThreshold,
       morningBriefEnabled,
       morningBriefTime,
+      speechInputEnabled,
+      speechRecognitionLanguage,
+      speechAutoSendAfterFinal,
+      speechTtsEnabled,
+      speechAutoSpeakAssistant,
+      speechTtsProvider,
+      speechTtsRate,
+      speechTtsPitch,
+      speechTtsVoiceName,
     ],
   )
 
@@ -519,6 +597,15 @@ export function useSettingsPageModel(): UseSettingsPageModelReturn {
     if (autoCompactThreshold !== l.agent.autoCompactThreshold) return true
     if (morningBriefEnabled !== l.agent.morningBrief.enabled) return true
     if (morningBriefTime !== l.agent.morningBrief.time) return true
+    if (speechInputEnabled !== l.speech.inputEnabled) return true
+    if (speechRecognitionLanguage !== l.speech.recognitionLanguage) return true
+    if (speechAutoSendAfterFinal !== l.speech.autoSendAfterFinal) return true
+    if (speechTtsEnabled !== l.speech.ttsEnabled) return true
+    if (speechAutoSpeakAssistant !== l.speech.autoSpeakAssistant) return true
+    if (speechTtsProvider !== l.speech.provider) return true
+    if (speechTtsRate !== l.speech.ttsRate) return true
+    if (speechTtsPitch !== l.speech.ttsPitch) return true
+    if (speechTtsVoiceName !== l.speech.ttsVoiceName) return true
     return false
   }, [
     loaded,
@@ -555,6 +642,15 @@ export function useSettingsPageModel(): UseSettingsPageModelReturn {
     autoCompactThreshold,
     morningBriefEnabled,
     morningBriefTime,
+    speechInputEnabled,
+    speechRecognitionLanguage,
+    speechAutoSendAfterFinal,
+    speechTtsEnabled,
+    speechAutoSpeakAssistant,
+    speechTtsProvider,
+    speechTtsRate,
+    speechTtsPitch,
+    speechTtsVoiceName,
   ])
 
   // Sync dirty state to sessionStorage so profile-switch warning can detect unsaved changes.
@@ -643,6 +739,24 @@ export function useSettingsPageModel(): UseSettingsPageModelReturn {
     setMorningBriefEnabled,
     morningBriefTime,
     setMorningBriefTime,
+    speechInputEnabled,
+    setSpeechInputEnabled,
+    speechRecognitionLanguage,
+    setSpeechRecognitionLanguage,
+    speechAutoSendAfterFinal,
+    setSpeechAutoSendAfterFinal,
+    speechTtsEnabled,
+    setSpeechTtsEnabled,
+    speechAutoSpeakAssistant,
+    setSpeechAutoSpeakAssistant,
+    speechTtsProvider,
+    setSpeechTtsProvider,
+    speechTtsRate,
+    setSpeechTtsRate,
+    speechTtsPitch,
+    setSpeechTtsPitch,
+    speechTtsVoiceName,
+    setSpeechTtsVoiceName,
     saveState,
     error,
     save,

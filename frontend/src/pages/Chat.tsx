@@ -10,11 +10,12 @@ import {
   type ReactNode,
 } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { IconClose, IconPlus, IconSend, IconSparkle, IconStop } from '../components/Icons'
+import { IconClose, IconMic, IconPlus, IconSend, IconSparkle, IconStop, IconVolume } from '../components/Icons'
 import Markdown from '../components/Markdown'
 import ToolCallPanel from '../components/ToolCallPanel'
 import { NotificationsApi, type NotificationContext } from '../api/notifications'
 import { useChatModel, type Msg } from '../hooks/useChatModel'
+import { useVoiceIO } from '../hooks/useVoiceIO'
 import { decideSend } from './chat-send'
 
 type ParsedContent = {
@@ -279,6 +280,8 @@ export default function Chat() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const model = useChatModel()
+  const voice = useVoiceIO()
+  const lastSpokenMessageIdRef = useRef<number | null>(null)
   const {
     messages,
     input,
@@ -343,9 +346,10 @@ export default function Chat() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const send = async () => {
+  const send = async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim()
     const decision = decideSend({
-      text: input.trim(),
+      text,
       pendingUploadsCount: pendingUploads.length,
       loading,
       uploading,
@@ -385,7 +389,7 @@ export default function Chat() {
       autosize()
       scrollToBottom('smooth')
     })
-    await sendModel()
+    await sendModel(textOverride)
   }
 
   useEffect(() => {
@@ -509,6 +513,36 @@ export default function Chat() {
     })
   }
 
+  useEffect(() => {
+    if (!voice.settings.autoSpeakAssistant) return
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((message) => message.role === 'assistant' && !message.streaming && !message.error && message.content.trim())
+    if (!lastAssistant || lastSpokenMessageIdRef.current === lastAssistant.id) return
+    lastSpokenMessageIdRef.current = lastAssistant.id
+    voice.speak(lastAssistant.content)
+  }, [messages, voice])
+
+  useEffect(() => {
+    if (loading) voice.cancelSpeaking()
+  }, [loading, voice])
+
+  const startVoiceInput = () => {
+    voice.startListening({
+      onTranscript: (text) => {
+        setInput((current) => {
+          const separator = current.trim() ? ' ' : ''
+          return `${current}${separator}${text}`
+        })
+        requestAnimationFrame(() => {
+          autosize()
+          taRef.current?.focus()
+        })
+      },
+      onAutoSend: (text) => void send(text),
+    })
+  }
+
   const clearNotificationFocus = () => {
     setNotificationContext(null)
     setFocusedMessageId(null)
@@ -521,6 +555,8 @@ export default function Chat() {
   const handleComposerKeyDown = async (
     event: KeyboardEvent<HTMLTextAreaElement>,
   ) => {
+    if (event.nativeEvent.isComposing || event.key === 'Process') return
+
     if (commandMenuOpen) {
       if (event.key === 'ArrowDown') {
         event.preventDefault()
@@ -753,6 +789,10 @@ export default function Chat() {
           tabIndex={-1}
           onChange={(event) => void onUploadInputChange(event.target.files)}
         />
+        {voice.interimTranscript && (
+          <div className="composer-hint voice-hint">正在识别：{voice.interimTranscript}</div>
+        )}
+        {voice.message && <div className="composer-hint voice-hint">{voice.message}</div>}
         <div className="composer">
           <button
             className="icon-btn ghost"
@@ -763,6 +803,25 @@ export default function Chat() {
           >
             <IconPlus size={16} />
           </button>
+          <button
+            className="icon-btn ghost"
+            type="button"
+            onClick={voice.listening ? voice.stopListening : startVoiceInput}
+            disabled={!historyLoaded || loading || uploading || !voice.settings.inputEnabled}
+            title={voice.listening ? '停止语音输入' : '语音输入'}
+          >
+            <IconMic size={16} />
+          </button>
+          {voice.speaking && (
+            <button
+              className="icon-btn ghost voice-active"
+              type="button"
+              onClick={voice.cancelSpeaking}
+              title="停止播报"
+            >
+              <IconVolume size={16} />
+            </button>
+          )}
           <textarea
             ref={taRef}
             value={input}
@@ -781,13 +840,21 @@ export default function Chat() {
             disabled={!historyLoaded}
           />
           {loading ? (
-            <button className="icon-btn danger" onClick={stop} title="停止生成" type="button">
+            <button
+              className="icon-btn danger"
+              onClick={() => {
+                voice.cancelSpeaking()
+                stop()
+              }}
+              title="停止生成"
+              type="button"
+            >
               <IconStop size={16} />
             </button>
           ) : (
             <button
               className="icon-btn primary"
-              onClick={send}
+              onClick={() => void send()}
               disabled={!historyLoaded || uploading || (!input.trim() && pendingUploads.length === 0)}
               title="发送"
               type="button"

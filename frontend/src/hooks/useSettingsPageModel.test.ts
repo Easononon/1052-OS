@@ -67,6 +67,8 @@ describe('useSettingsPageModel', () => {
     expect(result.current.uiLanguage).toBe('zh-CN')
     expect(result.current.streaming).toBe(true)
     expect(result.current.contextMessageLimit).toBe(50)
+    expect(result.current.speechInputEnabled).toBe(true)
+    expect(result.current.speechRecognitionLanguage).toBe('zh-CN')
   })
 
   it('updates fields via setters and persists them through save()', async () => {
@@ -82,6 +84,7 @@ describe('useSettingsPageModel', () => {
     act(() => {
       result.current.setBaseUrl('https://api.deepseek.com/v1')
       result.current.setModelId('deepseek-chat')
+      result.current.setSpeechAutoSpeakAssistant(true)
     })
 
     expect(result.current.baseUrl).toBe('https://api.deepseek.com/v1')
@@ -94,6 +97,7 @@ describe('useSettingsPageModel', () => {
     const patch = api.update.mock.calls[0][0]
     expect(patch.llm?.baseUrl).toBe('https://api.deepseek.com/v1')
     expect(patch.llm?.modelId).toBe('deepseek-chat')
+    expect(patch.speech?.autoSpeakAssistant).toBe(true)
   })
 
   it('applyLlmPreset sets baseUrl + modelId without touching apiKey', async () => {

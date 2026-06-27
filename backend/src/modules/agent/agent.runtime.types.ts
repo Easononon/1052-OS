@@ -76,6 +76,29 @@ export type AgentStreamEvent =
       resultPreview?: string
       /** Wall-clock duration of the tool execution in milliseconds. */
       durationMs?: number
+      /**
+       * Mirrors the runtime's `_retryable` flag from the tool's failure
+       * envelope. Frontend uses this to color the row in the Work Bar
+       * (transient network errors get a softer indicator; hard errors get
+       * a stricter one) and to decide whether to surface a "Retry" affordance.
+       */
+      retryable?: boolean
+      /**
+       * Actionable hint string from the runtime's failure classifier. The
+       * Work Bar shows this as a tooltip on the row's status pill so the
+       * operator can tell at a glance whether the agent should keep going,
+       * give up, or escalate to a human.
+       */
+      hint?: string
+      /**
+       * Set to `'open'` when the circuit breaker short-circuited the call.
+       * The row should render with a distinct "halted" state that is
+       * visually louder than a normal failure — this is the agent
+       * deliberately refusing to retry a known-bad call.
+       */
+      breaker?: 'open' | 'closed'
+      /** Number of consecutive failures that triggered the breaker (>=3). */
+      failureCount?: number
     }
   | { type: 'context-upgrade-requested'; packs: string[]; reason: string }
   | { type: 'context-upgrade-applying'; packs: string[] }

@@ -122,6 +122,8 @@ function getRoutingPrompt() {
     '- When you infer a durable preference, recurring workflow rule, project convention, or output preference, proactively request memory-pack if needed and create a memory_suggest after the immediate task is handled. Do not wait for the user to say "remember" every time.',
     '- Use secure-memory tools in memory-pack for API keys, tokens, passwords, private config, and other sensitive values.',
     '- UAPIs is available only after search-pack is mounted; then call uapis_list_apis, uapis_read_api, and uapis_call in order.',
+    '- Weather and forecast answers must use the runtime date to resolve relative dates like today, tomorrow, and next week; keep date ranges and weekdays consistent.',
+    '- If a weather API returns only current weather, do not present it as a multi-day forecast. For future forecasts, search/read authoritative weather pages and cite source/update time; never invent missing temperatures, wind, icons, or dates.',
     '- If a tool call fails, read the diagnostic, adjust parameters/tool/permission, and retry when the user intent still requires action. Do not treat a prior request failure as a permanent refusal.',
     '- Request at most 8 packs at once. There is no limit on upgrade count per user turn. If a task needs multiple capabilities, request them together in one upgrade call instead of one-by-one.',
     '- Do not mix request_context_upgrade with business tool calls in the same assistant turn.',

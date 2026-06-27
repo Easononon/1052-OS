@@ -286,6 +286,24 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
     setMorningBriefEnabled,
     morningBriefTime,
     setMorningBriefTime,
+    speechInputEnabled,
+    setSpeechInputEnabled,
+    speechRecognitionLanguage,
+    setSpeechRecognitionLanguage,
+    speechAutoSendAfterFinal,
+    setSpeechAutoSendAfterFinal,
+    speechTtsEnabled,
+    setSpeechTtsEnabled,
+    speechAutoSpeakAssistant,
+    setSpeechAutoSpeakAssistant,
+    speechTtsProvider,
+    setSpeechTtsProvider,
+    speechTtsRate,
+    setSpeechTtsRate,
+    speechTtsPitch,
+    setSpeechTtsPitch,
+    speechTtsVoiceName,
+    setSpeechTtsVoiceName,
     saveState: state,
     error,
     save: saveModel,
@@ -1267,6 +1285,119 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
                 >
                   <span className="switch-thumb" />
                 </button>
+              </div>
+
+              <div className="settings-row settings-row-stack">
+                <div className="settings-row-head">
+                  <div className="settings-row-label">
+                    <div className="settings-row-title">语音输入</div>
+                    <div className="settings-row-desc">
+                      在 Chat 中显示麦克风按钮，点击后由浏览器完成语音识别，不上传原始录音。
+                    </div>
+                  </div>
+                  <button
+                    className={'switch' + (speechInputEnabled ? ' on' : '')}
+                    type="button"
+                    onClick={() => setSpeechInputEnabled((current) => !current)}
+                  >
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+                {speechInputEnabled ? (
+                  <div className="settings-grid two">
+                    <label>
+                      识别语言
+                      <input
+                        className="settings-input"
+                        value={speechRecognitionLanguage}
+                        onChange={(event) => setSpeechRecognitionLanguage(event.target.value)}
+                        placeholder="zh-CN"
+                      />
+                    </label>
+                    <label className="settings-check-row">
+                      <input
+                        type="checkbox"
+                        checked={speechAutoSendAfterFinal}
+                        onChange={(event) => setSpeechAutoSendAfterFinal(event.target.checked)}
+                      />
+                      <span>识别完成后自动发送</span>
+                    </label>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="settings-row settings-row-stack">
+                <div className="settings-row-head">
+                  <div className="settings-row-label">
+                    <div className="settings-row-title">语音播报</div>
+                    <div className="settings-row-desc">
+                      使用浏览器 TTS 播放 Agent 最终回复；流式生成过程中不会逐字播报。
+                    </div>
+                  </div>
+                  <button
+                    className={'switch' + (speechTtsEnabled ? ' on' : '')}
+                    type="button"
+                    onClick={() => setSpeechTtsEnabled((current) => !current)}
+                  >
+                    <span className="switch-thumb" />
+                  </button>
+                </div>
+                {speechTtsEnabled ? (
+                  <div className="settings-grid two">
+                    <label className="settings-check-row">
+                      <input
+                        type="checkbox"
+                        checked={speechAutoSpeakAssistant}
+                        onChange={(event) => setSpeechAutoSpeakAssistant(event.target.checked)}
+                      />
+                      <span>Agent 回复完成后自动播报（收到回复时可点输入框右侧音量按钮静音）</span>
+                    </label>
+                    <label>
+                      播报引擎
+                      <select
+                        className="settings-input"
+                        value={speechTtsProvider}
+                        onChange={(event) => setSpeechTtsProvider(event.target.value as typeof speechTtsProvider)}
+                      >
+                        <option value="edge-tts">Edge TTS（云端自然音色）</option>
+                        <option value="browser">浏览器内置 TTS</option>
+                      </select>
+                    </label>
+                    <label>
+                      音色名称
+                      <input
+                        className="settings-input"
+                        value={speechTtsVoiceName}
+                        onChange={(event) => setSpeechTtsVoiceName(event.target.value)}
+                        placeholder={speechTtsProvider === 'edge-tts' ? 'zh-CN-YunxiNeural' : '留空使用浏览器默认音色'}
+                      />
+                    </label>
+                    <label>
+                      语速
+                      <input
+                        className="settings-input"
+                        type="number"
+                        min={0.5}
+                        max={2}
+                        step={0.1}
+                        value={speechTtsRate}
+                        onChange={(event) => setSpeechTtsRate(Number(event.target.value) || 1)}
+                      />
+                    </label>
+                    <label>
+                      音调
+                      <input
+                        className="settings-input"
+                        type="number"
+                        min={0}
+                        max={2}
+                        step={0.1}
+                        value={speechTtsPitch}
+                        onChange={(event) => setSpeechTtsPitch(Number(event.target.value) || 1)}
+                      />
+                    </label>
+                  </div>
+                ) : null}
               </div>
 
               <div className="settings-row settings-row-stack">

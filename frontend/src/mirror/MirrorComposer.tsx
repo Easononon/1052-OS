@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent, type ChangeEvent } from 'react'
 import { MirrorCard } from './primitives'
 import ToolCallPanel from '../components/ToolCallPanel'
+import { IconMic, IconVolume } from '../components/Icons'
 import type { UseChatModelReturn } from '../hooks/useChatModel'
+import { useVoiceIO } from '../hooks/useVoiceIO'
 
 export interface MirrorComposerProps {
   model: UseChatModelReturn
@@ -36,6 +38,8 @@ export function MirrorComposer({ model }: MirrorComposerProps) {
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const lastSpokenMessageIdRef = useRef<number | null>(null)
+  const voice = useVoiceIO()
 
   // Auto-resize: snap height to scrollHeight, capped at 200px so the doc
   // above the composer never disappears entirely.
@@ -46,17 +50,41 @@ export function MirrorComposer({ model }: MirrorComposerProps) {
     ta.style.height = Math.min(ta.scrollHeight, 200) + 'px'
   }, [input])
 
+  useEffect(() => {
+    const lastAssistant = [...model.messages]
+      .reverse()
+      .find((message) => message.role === 'assistant' && !message.streaming && !message.error && message.content.trim())
+    if (!voice.settings.autoSpeakAssistant || !lastAssistant || lastSpokenMessageIdRef.current === lastAssistant.id) return
+    lastSpokenMessageIdRef.current = lastAssistant.id
+    voice.speak(lastAssistant.content)
+  }, [model.messages, voice])
+
+  const startVoiceInput = useCallback(() => {
+    voice.startListening({
+      onTranscript: (text) => {
+        setInput((current) => {
+          const separator = current.trim() ? ' ' : ''
+          return `${current}${separator}${text}`
+        })
+        textareaRef.current?.focus()
+      },
+      onAutoSend: (text) => void send(text),
+    })
+  }, [send, setInput, voice])
+
   const onSubmit = useCallback(() => {
     if (loading) {
+      voice.cancelSpeaking()
       stop()
       return
     }
     if (!input.trim() && pendingUploads.length === 0) return
     void send()
-  }, [input, loading, send, stop, pendingUploads.length])
+  }, [input, loading, send, stop, pendingUploads.length, voice])
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.nativeEvent.isComposing || e.key === 'Process') return
       // Enter (without shift) sends; ⇧↵ inserts a newline.
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
@@ -101,6 +129,10 @@ export function MirrorComposer({ model }: MirrorComposerProps) {
           ))}
         </div>
       )}
+      {voice.interimTranscript && (
+        <div className="mr-composer-voice-hint">正在识别：{voice.interimTranscript}</div>
+      )}
+      {voice.message && <div className="mr-composer-voice-hint">{voice.message}</div>}
       <MirrorCard level={1} pad="tight" className="mr-composer">
         <button
           className="mr-composer-attach"
@@ -118,6 +150,27 @@ export function MirrorComposer({ model }: MirrorComposerProps) {
           style={{ display: 'none' }}
           onChange={onFileInput}
         />
+        <button
+          className="mr-composer-attach"
+          type="button"
+          onClick={voice.listening ? voice.stopListening : startVoiceInput}
+          aria-label={voice.listening ? '停止语音输入' : '语音输入'}
+          disabled={uploading || loading || !voice.settings.inputEnabled}
+          title={voice.listening ? '停止语音输入' : '语音输入'}
+        >
+          <IconMic size={14} />
+        </button>
+        {voice.speaking && (
+          <button
+            className="mr-composer-attach is-speaking"
+            type="button"
+            onClick={voice.cancelSpeaking}
+            aria-label="停止播报"
+            title="停止播报"
+          >
+            <IconVolume size={14} />
+          </button>
+        )}
         <textarea
           ref={textareaRef}
           className="mr-composer-input"

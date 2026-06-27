@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Node-RED 布局检测报告</title>
+<style>
+body{margin:0;background:#0f172a;color:#e2e8f0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:28px}
+.header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:20px}
+.card{background:#111827;border:1px solid #334155;border-radius:16px;padding:18px;box-shadow:0 12px 32px rgba(0,0,0,.25)}
+.grid{display:grid;grid-template-columns:minmax(0,3fr) 420px;gap:20px}
+.svgbox{height:680px;overflow:auto;background:white;border-radius:12px;border:1px solid #475569}
+.node{cursor:pointer} .node:hover{filter:brightness(1.15)}
+.wire{opacity:.8} .long-wire{animation:pulse 1.4s infinite} @keyframes pulse{50%{opacity:.35}}
+.score-row{display:grid;grid-template-columns:90px 1fr 52px;gap:10px;align-items:center;margin:8px 0;font-size:13px}
+.bar{height:10px;background:#334155;border-radius:999px;overflow:hidden} .bar i{display:block;height:100%}
+.issue{border-left:4px solid #64748b;background:#1f2937;margin:8px 0;padding:10px;border-radius:8px;cursor:pointer}
+.issue.error{border-color:#ef4444;background:#3f1d1d} .issue.warn{border-color:#f59e0b;background:#3b2f18} .issue.info{border-color:#38bdf8;background:#123243}
+.issue p{margin:6px 0 4px;font-size:13px} .issue small{color:#cbd5e1}
+.badge{font-size:11px;background:#475569;color:white;border-radius:999px;padding:2px 7px;margin-right:6px}
+.highlight rect{stroke:#22c55e!important;stroke-width:5!important}
+button{background:#2563eb;color:white;border:0;border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
+button:hover{background:#1d4ed8}
+.meta{color:#94a3b8;font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>Node-RED 布局检测报告</h1>
+      <div class="meta">文件：/Users/easonliu/1052-OS/docs/dust-explosion-nodered-flow-v1.1-layout-rules.json｜生成时间：2026-06-23 15:55:29｜建议搭配 @bartbutenaers/node-red-autolayout-sidebar 初排</div>
+    </div>
+    <div class="card" style="min-width:280px">
+      <h2 style="margin:0 0 8px">总分 75/100</h2>
+      <div class="meta">小修后可用｜节点 31｜Tab 1｜Group 5</div>
+      
+            <div class="score-row"><span>D1 对齐</span><div class="bar"><i style="width:20%;background:#ef4444"></i></div><b>3/15</b></div>
+        
+            <div class="score-row"><span>D2 间距/重叠</span><div class="bar"><i style="width:33%;background:#ef4444"></i></div><b>5/15</b></div>
+        
+            <div class="score-row"><span>D3 命名</span><div class="bar"><i style="width:100%;background:#22c55e"></i></div><b>25/25</b></div>
+        
+            <div class="score-row"><span>D4 分组</span><div class="bar"><i style="width:85%;background:#22c55e"></i></div><b>17/20</b></div>
+        
+            <div class="score-row"><span>D5 连线</span><div class="bar"><i style="width:100%;background:#22c55e"></i></div><b>20/20</b></div>
+        
+            <div class="score-row"><span>D6 坐标</span><div class="bar"><i style="width:100%;background:#22c55e"></i></div><b>5/5</b></div>
+        
+    </div>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="meta">红框=错误/重叠，黄框=警告，红线=过长连线；点击右侧问题可高亮节点</div>
+        <button onclick="exportPNG()">导出 PNG</button>
+      </div>
+      <div class="svgbox">
+        <svg id="flow-svg" width="100%" height="100%" viewBox="-140.0 -80.0 2540.0 1180.0">
+          <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b" /></marker></defs>
+          
+                <line class="wire " data-from="dust_init_inject_lr" data-to="dust_init_config_lr"
+                      x1="140.0" y1="120.0" x2="400.0" y2="120.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_rts_timer_lr" data-to="dust_make_rts_lr"
+                      x1="140.0" y1="320.0" x2="420.0" y2="380.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_rts_manual_lr" data-to="dust_make_rts_lr"
+                      x1="140.0" y1="440.0" x2="420.0" y2="380.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_make_rts_lr" data-to="dust_j_rts_upload_lr"
+                      x1="420.0" y1="380.0" x2="900.0" y2="380.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_event_high_lr" data-to="dust_make_event_lr"
+                      x1="140.0" y1="540.0" x2="420.0" y2="600.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_event_clear_lr" data-to="dust_make_event_lr"
+                      x1="140.0" y1="660.0" x2="420.0" y2="600.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_make_event_lr" data-to="dust_alarm_tts_lr"
+                      x1="420.0" y1="600.0" x2="660.0" y2="520.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_make_event_lr" data-to="dust_hik_trigger_lr"
+                      x1="420.0" y1="600.0" x2="660.0" y2="680.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_make_event_lr" data-to="dust_j_event_upload_lr"
+                      x1="420.0" y1="600.0" x2="900.0" y2="600.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_video_alarm_lr" data-to="dust_make_video_lr"
+                      x1="140.0" y1="820.0" x2="760.0" y2="820.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_make_video_lr" data-to="dust_j_video_upload_lr"
+                      x1="760.0" y1="820.0" x2="1100.0" y2="840.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_local_image_inject_lr" data-to="dust_read_local_image_lr"
+                      x1="140.0" y1="940.0" x2="380.0" y2="940.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_read_local_image_lr" data-to="dust_image_to_base64_lr"
+                      x1="380.0" y1="940.0" x2="620.0" y2="940.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_image_to_base64_lr" data-to="dust_make_video_lr"
+                      x1="620.0" y1="940.0" x2="760.0" y2="820.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_make_hik_video_lr" data-to="dust_encrypt_lr"
+                      x1="1380.0" y1="720.0" x2="1440.0" y2="500.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_j_rts_upload_lr" data-to="dust_encrypt_lr"
+                      x1="900.0" y1="380.0" x2="1440.0" y2="500.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_j_event_upload_lr" data-to="dust_encrypt_lr"
+                      x1="900.0" y1="600.0" x2="1440.0" y2="500.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_j_video_upload_lr" data-to="dust_encrypt_lr"
+                      x1="1100.0" y1="840.0" x2="1440.0" y2="500.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_encrypt_lr" data-to="dust_debug_plain_lr"
+                      x1="1440.0" y1="500.0" x2="1680.0" y2="420.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_encrypt_lr" data-to="dust_http_lr"
+                      x1="1440.0" y1="500.0" x2="1680.0" y2="500.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_http_lr" data-to="dust_handle_resp_lr"
+                      x1="1680.0" y1="500.0" x2="1920.0" y2="500.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_handle_resp_lr" data-to="dust_debug_resp_lr"
+                      x1="1920.0" y1="500.0" x2="2160.0" y2="500.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_status_in_lr" data-to="dust_status_fn_lr"
+                      x1="140.0" y1="220.0" x2="400.0" y2="220.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_status_fn_lr" data-to="dust_status_out_lr"
+                      x1="400.0" y1="220.0" x2="660.0" y2="220.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_alarm_tts_lr" data-to="dust_alarm_say_lr"
+                      x1="660.0" y1="520.0" x2="900.0" y2="520.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_hik_trigger_lr" data-to="dust_hik_snapshot_lr"
+                      x1="660.0" y1="680.0" x2="900.0" y2="720.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_hik_snapshot_lr" data-to="dust_hik_to_base64_lr"
+                      x1="900.0" y1="720.0" x2="1140.0" y2="720.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+                <line class="wire " data-from="dust_hik_to_base64_lr" data-to="dust_make_hik_video_lr"
+                      x1="1140.0" y1="720.0" x2="1380.0" y2="720.0" stroke="#64748b" stroke-width="1.8" marker-end="url(#arrow)" />
+            
+          
+            <g id="node-dust_group_config_lr" class="node" data-id="dust_group_config_lr" data-tooltip="ID: dust_group_config_lr
+Type: group
+X/Y: 40, 70
+Issues: none">
+                <rect x="-340.0" y="-25.0" width="760.0" height="190.0" rx="6" ry="6" fill="#f59e0b" stroke="#1e293b" stroke-width="1" />
+                <text x="40.0" y="74.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">配置与状态接口</text>
+            </g>
+        
+            <g id="node-dust_group_rts_lr" class="node" data-id="dust_group_rts_lr" data-tooltip="ID: dust_group_rts_lr
+Type: group
+X/Y: 40, 280
+Issues: none">
+                <rect x="-460.0" y="185.0" width="1000.0" height="190.0" rx="6" ry="6" fill="#f59e0b" stroke="#1e293b" stroke-width="1" />
+                <text x="40.0" y="284.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">2.1 实时数据 rtsData：打包上传，≤5分钟/次</text>
+            </g>
+        
+            <g id="node-dust_group_events_lr" class="node" data-id="dust_group_events_lr" data-tooltip="ID: dust_group_events_lr
+Type: group
+X/Y: 40, 490
+Issues: none">
+                <rect x="-730.0" y="355.0" width="1540.0" height="270.0" rx="6" ry="6" fill="#f59e0b" stroke="#1e293b" stroke-width="1" />
+                <text x="40.0" y="494.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">2.2 传感报警 eventsData：报警/消警 + 本地</text>
+            </g>
+        
+            <g id="node-dust_group_video_lr" class="node" data-id="dust_group_video_lr" data-tooltip="ID: dust_group_video_lr
+Type: group
+X/Y: 40, 770
+Issues: none">
+                <rect x="-570.0" y="665.0" width="1220.0" height="210.0" rx="6" ry="6" fill="#f59e0b" stroke="#1e293b" stroke-width="1" />
+                <text x="40.0" y="774.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">2.3 视频报警 videosData：图片≤500KB，i</text>
+            </g>
+        
+            <g id="node-dust_group_upload_lr" class="node" data-id="dust_group_upload_lr" data-tooltip="ID: dust_group_upload_lr
+Type: group
+X/Y: 1360, 370
+Issues: none">
+                <rect x="900.0" y="275.0" width="920.0" height="190.0" rx="6" ry="6" fill="#f59e0b" stroke="#1e293b" stroke-width="1" />
+                <text x="1360.0" y="374.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">统一上传：DES-CBC → Base64 → Hex → </text>
+            </g>
+        
+            <g id="node-dust_comment_arch_lr" class="node" data-id="dust_comment_arch_lr" data-tooltip="ID: dust_comment_arch_lr
+Type: comment
+X/Y: 820, 40
+Issues: none">
+                <rect x="705.0" y="25.0" width="230" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="820.0" y="44.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">布局：逻辑图→分层→聚类→统一上传；保留 V1.1 三类接口</text>
+            </g>
+        
+            <g id="node-dust_init_inject_lr" class="node" data-id="dust_init_inject_lr" data-tooltip="ID: dust_init_inject_lr
+Type: inject
+X/Y: 140, 120
+Issues: none">
+                <rect x="66.25" y="105.0" width="147.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="140.0" y="124.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">初始化配置</text>
+            </g>
+        
+            <g id="node-dust_init_config_lr" class="node" data-id="dust_init_config_lr" data-tooltip="ID: dust_init_config_lr
+Type: function
+X/Y: 400, 120
+Issues: none">
+                <rect x="272.75" y="105.0" width="254.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="400.0" y="124.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">配置 qybm/key/baseUrl</text>
+            </g>
+        
+            <g id="node-dust_rts_timer_lr" class="node" data-id="dust_rts_timer_lr" data-tooltip="ID: dust_rts_timer_lr
+Type: inject
+X/Y: 140, 320
+Issues: none">
+                <rect x="49.75" y="305.0" width="180.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="140.0" y="324.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">实时数据仿真 每30秒</text>
+            </g>
+        
+            <g id="node-dust_rts_manual_lr" class="node" data-id="dust_rts_manual_lr" data-tooltip="ID: dust_rts_manual_lr
+Type: inject
+X/Y: 140, 440
+Issues: 0, 5">
+                <rect x="47.0" y="425.0" width="186.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#f59e0b" stroke-width="2" />
+                <text x="140.0" y="444.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">手动触发 rtsData</text>
+            </g>
+        
+            <g id="node-dust_make_rts_lr" class="node" data-id="dust_make_rts_lr" data-tooltip="ID: dust_make_rts_lr
+Type: function
+X/Y: 420, 380
+Issues: 6">
+                <rect x="314.75" y="365.0" width="210.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="420.0" y="384.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">2.1 生成实时数据包</text>
+            </g>
+        
+            <g id="node-dust_event_high_lr" class="node" data-id="dust_event_high_lr" data-tooltip="ID: dust_event_high_lr
+Type: inject
+X/Y: 140, 540
+Issues: 1, 7">
+                <rect x="44.25" y="525.0" width="191.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#f59e0b" stroke-width="2" />
+                <text x="140.0" y="544.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">仿真报警：粉尘浓度超上上限</text>
+            </g>
+        
+            <g id="node-dust_event_clear_lr" class="node" data-id="dust_event_clear_lr" data-tooltip="ID: dust_event_clear_lr
+Type: inject
+X/Y: 140, 660
+Issues: 2, 8">
+                <rect x="49.75" y="645.0" width="180.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#f59e0b" stroke-width="2" />
+                <text x="140.0" y="664.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">仿真消警：粉尘浓度恢复</text>
+            </g>
+        
+            <g id="node-dust_make_event_lr" class="node" data-id="dust_make_event_lr" data-tooltip="ID: dust_make_event_lr
+Type: function
+X/Y: 420, 600
+Issues: 9">
+                <rect x="312.0" y="585.0" width="216.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="420.0" y="604.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">2.2 生成传感报警数据</text>
+            </g>
+        
+            <g id="node-dust_video_alarm_lr" class="node" data-id="dust_video_alarm_lr" data-tooltip="ID: dust_video_alarm_lr
+Type: inject
+X/Y: 140, 820
+Issues: 10">
+                <rect x="49.75" y="805.0" width="180.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="140.0" y="824.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">仿真视频报警：烟火识别</text>
+            </g>
+        
+            <g id="node-dust_make_video_lr" class="node" data-id="dust_make_video_lr" data-tooltip="ID: dust_make_video_lr
+Type: function
+X/Y: 760, 820
+Issues: 10, 11">
+                <rect x="652.0" y="805.0" width="216.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="760.0" y="824.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">2.3 生成视频报警数据</text>
+            </g>
+        
+            <g id="node-dust_local_image_inject_lr" class="node" data-id="dust_local_image_inject_lr" data-tooltip="ID: dust_local_image_inject_lr
+Type: inject
+X/Y: 140, 940
+Issues: none">
+                <rect x="52.5" y="925.0" width="175.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="140.0" y="944.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">上传本地照片视频报警</text>
+            </g>
+        
+            <g id="node-dust_read_local_image_lr" class="node" data-id="dust_read_local_image_lr" data-tooltip="ID: dust_read_local_image_lr
+Type: file in
+X/Y: 380, 940
+Issues: none">
+                <rect x="298.0" y="925.0" width="164.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="380.0" y="944.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">读取本地图片文件</text>
+            </g>
+        
+            <g id="node-dust_image_to_base64_lr" class="node" data-id="dust_image_to_base64_lr" data-tooltip="ID: dust_image_to_base64_lr
+Type: function
+X/Y: 620, 940
+Issues: none">
+                <rect x="517.5" y="925.0" width="205.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="620.0" y="944.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">图片转 base64</text>
+            </g>
+        
+            <g id="node-dust_make_hik_video_lr" class="node" data-id="dust_make_hik_video_lr" data-tooltip="ID: dust_make_hik_video_lr
+Type: function
+X/Y: 1380, 720
+Issues: 4">
+                <rect x="1261.0" y="705.0" width="238.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#f59e0b" stroke-width="2" />
+                <text x="1380.0" y="724.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">2.3 生成海康联动视频报警数据</text>
+            </g>
+        
+            <g id="node-dust_j_rts_upload_lr" class="node" data-id="dust_j_rts_upload_lr" data-tooltip="ID: dust_j_rts_upload_lr
+Type: junction
+X/Y: 900, 380
+Issues: 6">
+                <rect x="892.0" y="372.0" width="16" height="16" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="900.0" y="384.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">junction (dust_j_r)</text>
+            </g>
+        
+            <g id="node-dust_j_event_upload_lr" class="node" data-id="dust_j_event_upload_lr" data-tooltip="ID: dust_j_event_upload_lr
+Type: junction
+X/Y: 900, 600
+Issues: 9">
+                <rect x="892.0" y="592.0" width="16" height="16" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="900.0" y="604.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">junction (dust_j_e)</text>
+            </g>
+        
+            <g id="node-dust_j_video_upload_lr" class="node" data-id="dust_j_video_upload_lr" data-tooltip="ID: dust_j_video_upload_lr
+Type: junction
+X/Y: 1100, 840
+Issues: 3, 11">
+                <rect x="1092.0" y="832.0" width="16" height="16" rx="6" ry="6" fill="#2563eb" stroke="#f59e0b" stroke-width="2" />
+                <text x="1100.0" y="844.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">junction (dust_j_v)</text>
+            </g>
+        
+            <g id="node-dust_encrypt_lr" class="node" data-id="dust_encrypt_lr" data-tooltip="ID: dust_encrypt_lr
+Type: function
+X/Y: 1440, 500
+Issues: none">
+                <rect x="1315.5" y="485.0" width="249.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="1440.0" y="504.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">DES-CBC 加密 data 字段</text>
+            </g>
+        
+            <g id="node-dust_http_lr" class="node" data-id="dust_http_lr" data-tooltip="ID: dust_http_lr
+Type: http request
+X/Y: 1680, 500
+Issues: none">
+                <rect x="1584.25" y="485.0" width="191.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="1680.0" y="504.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">POST 河北粉尘平台接口</text>
+            </g>
+        
+            <g id="node-dust_handle_resp_lr" class="node" data-id="dust_handle_resp_lr" data-tooltip="ID: dust_handle_resp_lr
+Type: function
+X/Y: 1920, 500
+Issues: none">
+                <rect x="1834.0" y="485.0" width="172.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="1920.0" y="504.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">响应状态</text>
+            </g>
+        
+            <g id="node-dust_debug_plain_lr" class="node" data-id="dust_debug_plain_lr" data-tooltip="ID: dust_debug_plain_lr
+Type: debug
+X/Y: 1680, 420
+Issues: 5">
+                <rect x="1600.75" y="405.0" width="158.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="1680.0" y="424.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">明文/加密预览</text>
+            </g>
+        
+            <g id="node-dust_debug_resp_lr" class="node" data-id="dust_debug_resp_lr" data-tooltip="ID: dust_debug_resp_lr
+Type: debug
+X/Y: 2160, 500
+Issues: none">
+                <rect x="2089.0" y="485.0" width="142.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="2160.0" y="504.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">平台响应</text>
+            </g>
+        
+            <g id="node-dust_status_in_lr" class="node" data-id="dust_status_in_lr" data-tooltip="ID: dust_status_in_lr
+Type: http in
+X/Y: 140, 220
+Issues: none">
+                <rect x="25.0" y="205.0" width="230" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="140.0" y="224.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">GET /api/dust-v11/status</text>
+            </g>
+        
+            <g id="node-dust_status_fn_lr" class="node" data-id="dust_status_fn_lr" data-tooltip="ID: dust_status_fn_lr
+Type: function
+X/Y: 400, 220
+Issues: none">
+                <rect x="305.75" y="205.0" width="188.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="400.0" y="224.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">flow 状态</text>
+            </g>
+        
+            <g id="node-dust_status_out_lr" class="node" data-id="dust_status_out_lr" data-tooltip="ID: dust_status_out_lr
+Type: http response
+X/Y: 660, 220
+Issues: none">
+                <rect x="545.0" y="205.0" width="230" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="660.0" y="224.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">http response (dust_sta)</text>
+            </g>
+        
+            <g id="node-dust_alarm_tts_lr" class="node" data-id="dust_alarm_tts_lr" data-tooltip="ID: dust_alarm_tts_lr
+Type: function
+X/Y: 660, 520
+Issues: 7">
+                <rect x="560.25" y="505.0" width="199.5" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="660.0" y="524.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">报警内容转语音文本</text>
+            </g>
+        
+            <g id="node-dust_alarm_say_lr" class="node" data-id="dust_alarm_say_lr" data-tooltip="ID: dust_alarm_say_lr
+Type: exec
+X/Y: 900, 520
+Issues: none">
+                <rect x="785.0" y="505.0" width="230" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="900.0" y="524.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">TTS 语音报警(Tingting/云熙替代)</text>
+            </g>
+        
+            <g id="node-dust_hik_trigger_lr" class="node" data-id="dust_hik_trigger_lr" data-tooltip="ID: dust_hik_trigger_lr
+Type: function
+X/Y: 660, 680
+Issues: 8">
+                <rect x="563.0" y="665.0" width="194.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="660.0" y="684.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">报警触发海康抓拍</text>
+            </g>
+        
+            <g id="node-dust_hik_snapshot_lr" class="node" data-id="dust_hik_snapshot_lr" data-tooltip="ID: dust_hik_snapshot_lr
+Type: exec
+X/Y: 900, 720
+Issues: none">
+                <rect x="807.0" y="705.0" width="186.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#1e293b" stroke-width="1" />
+                <text x="900.0" y="724.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">海康抓拍（环境变量配置）</text>
+            </g>
+        
+            <g id="node-dust_hik_to_base64_lr" class="node" data-id="dust_hik_to_base64_lr" data-tooltip="ID: dust_hik_to_base64_lr
+Type: function
+X/Y: 1140, 720
+Issues: 4">
+                <rect x="1021.0" y="705.0" width="238.0" height="30" rx="6" ry="6" fill="#2563eb" stroke="#f59e0b" stroke-width="2" />
+                <text x="1140.0" y="724.0" text-anchor="middle" fill="white" font-size="11" font-family="system-ui,sans-serif">海康 JPEG 转 base64</text>
+            </g>
+        
+        </svg>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">问题明细（13）</h2>
+      <div style="max-height:650px;overflow:auto">
+            <div class="issue warn" onclick="highlightIssue('dust_rts_manual_lr')">
+                <span class="badge">WARN</span>
+                <strong>D1 对齐</strong>
+                <p>行 Y≈420 的节点 Y 坐标偏差 20px，超过 5px</p>
+                <small>框选同行节点，在 Node-RED 里执行 Align nodes，或统一设置相同 y。</small>
+            </div>
+        
+            <div class="issue warn" onclick="highlightIssue('dust_event_high_lr')">
+                <span class="badge">WARN</span>
+                <strong>D1 对齐</strong>
+                <p>行 Y≈540 的节点 Y 坐标偏差 20px，超过 5px</p>
+                <small>框选同行节点，在 Node-RED 里执行 Align nodes，或统一设置相同 y。</small>
+            </div>
+        
+            <div class="issue warn" onclick="highlightIssue('dust_event_clear_lr')">
+                <span class="badge">WARN</span>
+                <strong>D1 对齐</strong>
+                <p>行 Y≈660 的节点 Y 坐标偏差 20px，超过 5px</p>
+                <small>框选同行节点，在 Node-RED 里执行 Align nodes，或统一设置相同 y。</small>
+            </div>
+        
+            <div class="issue warn" onclick="highlightIssue('dust_j_video_upload_lr')">
+                <span class="badge">WARN</span>
+                <strong>D1 对齐</strong>
+                <p>行 Y≈840 的节点 Y 坐标偏差 20px，超过 5px</p>
+                <small>框选同行节点，在 Node-RED 里执行 Align nodes，或统一设置相同 y。</small>
+            </div>
+        
+            <div class="issue warn" onclick="highlightIssue('dust_hik_to_base64_lr,dust_make_hik_video_lr')">
+                <span class="badge">WARN</span>
+                <strong>D2 间距/重叠</strong>
+                <p>与 2.3 生成海康联动视频报警数据 间距过近，小于 15px</p>
+                <small>节点之间保留可读空隙，避免连线和标签挤在一起。</small>
+            </div>
+        
+            <div class="issue info" onclick="highlightIssue('dust_debug_plain_lr,dust_rts_manual_lr')">
+                <span class="badge">INFO</span>
+                <strong>D2 间距/重叠</strong>
+                <p>同一行中心点水平间距 1540px 偏大</p>
+                <small>如果不是刻意留白，建议收拢或用 link 节点分段。</small>
+            </div>
+        
+            <div class="issue info" onclick="highlightIssue('dust_j_rts_upload_lr,dust_make_rts_lr')">
+                <span class="badge">INFO</span>
+                <strong>D2 间距/重叠</strong>
+                <p>同一行中心点水平间距 480px 偏大</p>
+                <small>如果不是刻意留白，建议收拢或用 link 节点分段。</small>
+            </div>
+        
+            <div class="issue info" onclick="highlightIssue('dust_alarm_tts_lr,dust_event_high_lr')">
+                <span class="badge">INFO</span>
+                <strong>D2 间距/重叠</strong>
+                <p>同一行中心点水平间距 520px 偏大</p>
+                <small>如果不是刻意留白，建议收拢或用 link 节点分段。</small>
+            </div>
+        
+            <div class="issue info" onclick="highlightIssue('dust_hik_trigger_lr,dust_event_clear_lr')">
+                <span class="badge">INFO</span>
+                <strong>D2 间距/重叠</strong>
+                <p>同一行中心点水平间距 520px 偏大</p>
+                <small>如果不是刻意留白，建议收拢或用 link 节点分段。</small>
+            </div>
+        
+            <div class="issue info" onclick="highlightIssue('dust_j_event_upload_lr,dust_make_event_lr')">
+                <span class="badge">INFO</span>
+                <strong>D2 间距/重叠</strong>
+                <p>同一行中心点水平间距 480px 偏大</p>
+                <small>如果不是刻意留白，建议收拢或用 link 节点分段。</small>
+            </div>
+        
+            <div class="issue info" onclick="highlightIssue('dust_make_video_lr,dust_video_alarm_lr')">
+                <span class="badge">INFO</span>
+                <strong>D2 间距/重叠</strong>
+                <p>同一行中心点水平间距 620px 偏大</p>
+                <small>如果不是刻意留白，建议收拢或用 link 节点分段。</small>
+            </div>
+        
+            <div class="issue info" onclick="highlightIssue('dust_j_video_upload_lr,dust_make_video_lr')">
+                <span class="badge">INFO</span>
+                <strong>D2 间距/重叠</strong>
+                <p>同一行中心点水平间距 340px 偏大</p>
+                <small>如果不是刻意留白，建议收拢或用 link 节点分段。</small>
+            </div>
+        
+            <div class="issue warn" onclick="highlightIssue('dust_v11_layout_tab')">
+                <span class="badge">WARN</span>
+                <strong>D4 分组</strong>
+                <p>Tab &#x27;粉尘涉爆上传 v1.1 仿真 · 新规则布局&#x27; 有 31 个节点，超过建议上限 30</p>
+                <small>按业务域拆分 Tab，或把重复逻辑抽成 subflow。</small>
+            </div>
+        </div>
+    </div>
+  </div>
+</div>
+<script>
+function highlightIssue(ids){
+  document.querySelectorAll('.node').forEach(n=>n.classList.remove('highlight'));
+  ids.split(',').filter(Boolean).forEach(id=>{const el=document.getElementById('node-'+id); if(el) el.classList.add('highlight');});
+  const first=ids.split(',').filter(Boolean)[0]; const el=document.getElementById('node-'+first); if(el) el.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+}
+function exportPNG(){
+  const svg=document.getElementById('flow-svg');
+  const data=new XMLSerializer().serializeToString(svg);
+  const img=new Image(); const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d');
+  img.onload=function(){canvas.width=svg.viewBox.baseVal.width; canvas.height=svg.viewBox.baseVal.height; ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); const a=document.createElement('a'); a.download='nodered-layout-report.png'; a.href=canvas.toDataURL('image/png'); a.click();};
+  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(data)));
+}
+</script>
+</body>
+</html>

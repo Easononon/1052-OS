@@ -356,9 +356,23 @@ async function composeLegacyMessages(
   return messages
 }
 
-function parseToolResult(content: string): { ok?: boolean; error?: string } | null {
+function parseToolResult(content: string): {
+  ok?: boolean
+  error?: string
+  _retryable?: boolean
+  _hint?: string
+  _breaker?: 'open' | 'closed'
+  _failureCount?: number
+} | null {
   try {
-    const parsed = JSON.parse(content) as { ok?: boolean; error?: string }
+    const parsed = JSON.parse(content) as {
+      ok?: boolean
+      error?: string
+      _retryable?: boolean
+      _hint?: string
+      _breaker?: 'open' | 'closed'
+      _failureCount?: number
+    }
     return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
     return null
@@ -409,6 +423,10 @@ async function* executeToolCallsWithEvents(
       callId: tc.id,
       resultPreview: buildResultPreview(msg.content ?? ''),
       durationMs: elapsedMs,
+      retryable: parsed?._retryable,
+      hint: parsed?._hint,
+      breaker: parsed?._breaker,
+      failureCount: parsed?._failureCount,
     }
   }
 
@@ -457,7 +475,63 @@ async function* executeToolCallsWithEvents(
 }
 
 function stripThink(content: string) {
-  return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+  return content
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/gi, '')
+    .trim()
+}
+
+function trailingTagPrefixLength(value: string, tag: string) {
+  const lowerValue = value.toLowerCase()
+  const lowerTag = tag.toLowerCase()
+  const max = Math.min(lowerValue.length, lowerTag.length - 1)
+  for (let length = max; length > 0; length -= 1) {
+    if (lowerValue.endsWith(lowerTag.slice(0, length))) return length
+  }
+  return 0
+}
+
+function createThinkStreamFilter() {
+  const openTag = '<think>'
+  const closeTag = '</think>'
+  let buffer = ''
+  let inThinkBlock = false
+
+  return (chunk: string) => {
+    buffer += chunk
+    let output = ''
+
+    while (buffer) {
+      const lowerBuffer = buffer.toLowerCase()
+
+      if (inThinkBlock) {
+        const closeIndex = lowerBuffer.indexOf(closeTag)
+        if (closeIndex === -1) {
+          const keep = trailingTagPrefixLength(buffer, closeTag)
+          buffer = keep > 0 ? buffer.slice(-keep) : ''
+          break
+        }
+
+        buffer = buffer.slice(closeIndex + closeTag.length)
+        inThinkBlock = false
+        continue
+      }
+
+      const openIndex = lowerBuffer.indexOf(openTag)
+      if (openIndex === -1) {
+        const keep = trailingTagPrefixLength(buffer, openTag)
+        output += keep > 0 ? buffer.slice(0, -keep) : buffer
+        buffer = keep > 0 ? buffer.slice(-keep) : ''
+        break
+      }
+
+      output += buffer.slice(0, openIndex)
+      buffer = buffer.slice(openIndex + openTag.length)
+      inThinkBlock = true
+    }
+
+    return output
+  }
 }
 
 async function maybeBuildExtraSections(
@@ -608,10 +682,12 @@ async function* runLegacyStream(
           providerCachingEnabled: settings.agent.providerCachingEnabled,
           streamIdleTimeoutMs: STREAM_IDLE_TIMEOUT_MS,
         })
+        const filterThinkDelta = createThinkStreamFilter()
         let step = await stream.next()
 
         while (!step.done) {
-          yield { type: 'delta', content: step.value }
+          const visible = filterThinkDelta(step.value)
+          if (visible) yield { type: 'delta', content: visible }
           step = await stream.next()
         }
         response = step.value

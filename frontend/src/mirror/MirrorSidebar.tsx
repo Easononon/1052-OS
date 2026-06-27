@@ -1,15 +1,48 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import IndustrialAgentMark from '../components/IndustrialAgentMark'
 import { NAV_ITEMS } from './nav'
 import { MirrorText, MirrorChip } from './primitives'
 
+const COLLAPSED_KEY = 'agent.sidebar.collapsed'
+
 export function MirrorSidebar() {
   const loc = useLocation()
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSED_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem(COLLAPSED_KEY, String(collapsed))
+  }, [collapsed])
+
   return (
-    <aside className="mr-sidebar">
+    <aside className={'mr-sidebar' + (collapsed ? ' is-collapsed' : '')}>
       <div className="mr-sidebar-brand">
-        <MirrorText role="title" as="span">1052 OS</MirrorText>
-        <button className="mr-sidebar-collapse" type="button" aria-label="折叠">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <IndustrialAgentMark size={34} />
+        <div className="mr-sidebar-brand-copy">
+          <MirrorText role="title" as="span">工控智能 Agent</MirrorText>
+          <MirrorText role="meta" as="span">Industrial Copilot</MirrorText>
+        </div>
+        <button
+          className="mr-sidebar-collapse"
+          type="button"
+          onClick={() => setCollapsed((value) => !value)}
+          aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+          title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            aria-hidden="true"
+            className={collapsed ? 'is-flipped' : ''}
+          >
             <path
               d="M9 3L5 7L9 11"
               stroke="currentColor"
@@ -41,7 +74,7 @@ export function MirrorSidebar() {
       </nav>
       <div className="mr-sidebar-footer">
         <div className="mr-chip-row">
-          <MirrorChip active>1052</MirrorChip>
+          <MirrorChip active>Agent</MirrorChip>
           <MirrorChip>01</MirrorChip>
           <MirrorChip>02</MirrorChip>
           <MirrorChip>03</MirrorChip>

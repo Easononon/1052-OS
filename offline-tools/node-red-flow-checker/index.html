@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Node-RED 离线流程体检工具</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07101c;
+      --panel: #0c1f30;
+      --panel-2: #102a40;
+      --line: #1b4963;
+      --text: #e5f3f8;
+      --muted: #89a9b8;
+      --cyan: #23deee;
+      --green: #44dc92;
+      --amber: #ffb241;
+      --red: #ff595e;
+      --blue: #5aa9ff;
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      background:
+        linear-gradient(rgba(35, 222, 238, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(35, 222, 238, 0.03) 1px, transparent 1px),
+        radial-gradient(circle at 18% 12%, rgba(35, 222, 238, 0.13), transparent 28rem),
+        radial-gradient(circle at 84% 18%, rgba(68, 220, 146, 0.10), transparent 24rem),
+        var(--bg);
+      background-size: 32px 32px, 32px 32px, auto, auto, auto;
+      color: var(--text);
+    }
+
+    header {
+      padding: 28px clamp(20px, 4vw, 56px) 16px;
+      border-bottom: 1px solid rgba(35, 222, 238, 0.18);
+    }
+
+    .eyebrow {
+      color: var(--cyan);
+      font-family: Consolas, Monaco, monospace;
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 8px;
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .lead {
+      max-width: 920px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(320px, 440px) 1fr;
+      gap: 18px;
+      padding: 18px clamp(20px, 4vw, 56px) 42px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(16, 42, 64, 0.92), rgba(12, 31, 48, 0.92));
+      border: 1px solid rgba(35, 222, 238, 0.18);
+      box-shadow: 0 18px 48px var(--shadow);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(35, 222, 238, 0.15);
+      background: rgba(7, 16, 28, 0.44);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border: 1px solid rgba(68, 220, 146, 0.35);
+      border-radius: 999px;
+      color: var(--green);
+      font-family: Consolas, Monaco, monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .body { padding: 18px; }
+
+    .dropzone {
+      display: grid;
+      place-items: center;
+      min-height: 210px;
+      padding: 24px;
+      border: 1px dashed rgba(35, 222, 238, 0.5);
+      border-radius: 14px;
+      background: rgba(7, 16, 28, 0.38);
+      text-align: center;
+      transition: 0.18s ease;
+    }
+
+    .dropzone.dragover {
+      border-color: var(--green);
+      background: rgba(68, 220, 146, 0.08);
+      transform: translateY(-1px);
+    }
+
+    input[type="file"] { display: none; }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button, .file-btn {
+      border: 1px solid rgba(35, 222, 238, 0.34);
+      background: rgba(35, 222, 238, 0.08);
+      color: var(--text);
+      padding: 10px 13px;
+      border-radius: 10px;
+      font: inherit;
+      cursor: pointer;
+      transition: 0.16s ease;
+    }
+
+    button:hover, .file-btn:hover { border-color: var(--cyan); background: rgba(35, 222, 238, 0.15); }
+    button.primary { border-color: rgba(68, 220, 146, 0.5); background: rgba(68, 220, 146, 0.12); }
+    button.warn { border-color: rgba(255, 178, 65, 0.5); background: rgba(255, 178, 65, 0.10); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .metric {
+      padding: 12px;
+      border: 1px solid rgba(35, 222, 238, 0.14);
+      border-radius: 12px;
+      background: rgba(7, 16, 28, 0.32);
+    }
+
+    .metric .label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .metric .value {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 22px;
+      color: var(--cyan);
+    }
+
+    .score-wrap {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .score-ring {
+      width: 170px;
+      height: 170px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(var(--green) calc(var(--score, 0) * 1%), rgba(35, 222, 238, 0.10) 0);
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.35), 0 0 30px rgba(35, 222, 238, 0.08);
+      position: relative;
+    }
+
+    .score-ring::after {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      background: var(--panel);
+      border-radius: inherit;
+      border: 1px solid rgba(35, 222, 238, 0.15);
+    }
+
+    .score-num {
+      position: relative;
+      z-index: 1;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 42px;
+      color: var(--text);
+    }
+
+    .breakdown {
+      display: grid;
+      gap: 9px;
+    }
+
+    .score-note {
+      margin-top: 4px;
+      padding: 10px 12px;
+      border: 1px solid rgba(35, 222, 238, 0.14);
+      border-radius: 12px;
+      background: rgba(7, 16, 28, 0.28);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .score-note strong { color: var(--text); }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 92px 1fr 42px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(35, 222, 238, 0.10);
+      overflow: hidden;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: var(--w, 0%);
+      background: linear-gradient(90deg, var(--cyan), var(--green));
+      border-radius: inherit;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 0 18px 14px;
+      border-bottom: 1px solid rgba(35, 222, 238, 0.12);
+    }
+
+    .tab-btn {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .tab-btn.active {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(68, 220, 146, 0.1);
+    }
+
+    .issues {
+      display: grid;
+      gap: 10px;
+      max-height: 420px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .issue {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid rgba(35, 222, 238, 0.12);
+      border-left-width: 4px;
+      border-radius: 12px;
+      background: rgba(7, 16, 28, 0.32);
+    }
+
+    .issue.error { border-left-color: var(--red); }
+    .issue.warn { border-left-color: var(--amber); }
+    .issue.info { border-left-color: var(--blue); }
+
+    .sev {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .issue-title { font-weight: 700; margin-bottom: 5px; }
+    .issue-detail { color: var(--muted); font-size: 13px; line-height: 1.65; }
+
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 18px;
+      border-top: 1px solid rgba(35, 222, 238, 0.12);
+      background: rgba(7, 16, 28, 0.28);
+    }
+
+    .segmented {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid rgba(35, 222, 238, 0.18);
+      border-radius: 12px;
+      background: rgba(7, 16, 28, 0.35);
+    }
+
+    .segmented button {
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .segmented button.active {
+      color: var(--green);
+      border-color: rgba(68, 220, 146, 0.35);
+      background: rgba(68, 220, 146, 0.10);
+    }
+
+    .canvas-wrap {
+      min-height: 520px;
+      overflow: auto;
+      background: rgba(7, 16, 28, 0.32);
+      border-top: 1px solid rgba(35, 222, 238, 0.12);
+      position: relative;
+    }
+
+    .preview-shell { display: block; }
+    .preview-shell.hidden { display: none; }
+
+    svg { display: block; min-width: 960px; min-height: 520px; }
+
+    .json-preview {
+      display: none;
+      min-height: 520px;
+      margin: 0;
+      padding: 18px;
+      overflow: auto;
+      color: #d7f8ff;
+      background: rgba(2, 8, 14, 0.72);
+      font: 12px/1.65 Consolas, Monaco, monospace;
+      white-space: pre;
+    }
+
+    .json-preview.active { display: block; }
+
+    .compare-note {
+      color: var(--muted);
+      font-size: 12px;
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(2, 8, 14, 0.92);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal.active { display: grid; grid-template-rows: auto 1fr; }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(35, 222, 238, 0.2);
+      background: rgba(7, 16, 28, 0.88);
+    }
+
+    .modal-body { overflow: auto; }
+    .modal-body svg { min-width: 1400px; min-height: 820px; }
+
+    .node-rect { fill: rgba(16, 42, 64, 0.95); stroke: rgba(35, 222, 238, 0.45); stroke-width: 1.2; }
+    .node-rect.warn { stroke: var(--amber); }
+    .node-rect.error { stroke: var(--red); }
+    .node-text { fill: var(--text); font-size: 11px; font-family: "Microsoft YaHei", sans-serif; pointer-events: none; }
+    .wire { stroke: rgba(137, 169, 184, 0.5); stroke-width: 1.2; fill: none; }
+    .wire.long { stroke: rgba(255, 178, 65, 0.65); }
+    .grid-line { stroke: rgba(35, 222, 238, 0.05); stroke-width: 1; }
+
+    .empty {
+      color: var(--muted);
+      line-height: 1.8;
+      padding: 18px;
+    }
+
+    footer {
+      padding: 0 clamp(20px, 4vw, 56px) 32px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr; }
+      .score-wrap { grid-template-columns: 1fr; }
+      .score-ring { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">NODE-RED FLOW INSPECTOR / OFFLINE</div>
+    <h1>Node-RED 离线流程体检工具</h1>
+    <p class="lead">上传 flows.json 后，所有校验都在浏览器本地完成：合法性、布局方向、节点重叠、连线交叉、长线、孤立节点、分组聚类和自动重排。不会上传工程数据，断网也能用。</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">流程文件</h2>
+        <span class="status-pill"><span class="status-dot"></span>LOCAL ONLY</span>
+      </div>
+      <div class="body">
+        <label id="dropzone" class="dropzone" for="fileInput">
+          <div>
+            <div style="font-size: 42px; color: var(--cyan); margin-bottom: 8px;">⬡</div>
+            <strong>拖拽或点击上传 flows.json</strong>
+            <p style="color: var(--muted); margin: 8px 0 0; line-height: 1.7;">支持 Node-RED 导出的数组格式；检测到 PLC 工程、非 flow JSON 会直接拒绝。</p>
+          </div>
+        </label>
+        <input id="fileInput" type="file" accept=".json,application/json" />
+        <div class="btn-row">
+          <button id="sampleBtn" type="button">载入示例</button>
+          <button id="repairBtn" class="primary" type="button" disabled>自动修复布局</button>
+          <button id="downloadBtn" class="warn" type="button" disabled>下载修正 JSON</button>
+          <button id="reportBtn" type="button" disabled>下载报告</button>
+        </div>
+        <div class="meta">
+          <div class="metric"><span class="label">文件名</span><span id="fileName" class="value" style="font-size: 14px; word-break: break-all;">未上传</span></div>
+          <div class="metric"><span class="label">Tab 数</span><span id="tabCount" class="value">0</span></div>
+          <div class="metric"><span class="label">节点数</span><span id="nodeCount" class="value">0</span></div>
+          <div class="metric"><span class="label">连线数</span><span id="wireCount" class="value">0</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">评分与问题</h2>
+        <span id="grade" class="status-pill"><span class="status-dot"></span>WAITING</span>
+      </div>
+      <div class="body">
+        <div class="score-wrap">
+          <div id="scoreRing" class="score-ring" style="--score: 0"><div id="scoreNum" class="score-num">--</div></div>
+          <div>
+            <div id="breakdown" class="breakdown"></div>
+            <div id="scoreNote" class="score-note">上传后会显示扣分原因。</div>
+          </div>
+        </div>
+      </div>
+      <div class="tabs" id="tabBar"></div>
+      <div class="body">
+        <div id="issues" class="issues"><div class="empty">等待上传 Node-RED flow 文件。</div></div>
+      </div>
+      <div class="preview-toolbar">
+        <div class="segmented" aria-label="预览模式">
+          <button id="viewCurrentBtn" class="active" type="button">当前图</button>
+          <button id="viewOriginalBtn" type="button">原始图</button>
+          <button id="viewCompareBtn" type="button">前后对比</button>
+          <button id="viewJsonBtn" type="button">JSON</button>
+        </div>
+        <div class="btn-row" style="margin: 0;">
+          <button id="fitBtn" type="button" disabled>适配视图</button>
+          <button id="fullscreenBtn" type="button" disabled>全屏预览</button>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <div id="previewShell" class="preview-shell"><svg id="preview" role="img" aria-label="流程预览"></svg></div>
+        <pre id="jsonPreview" class="json-preview"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>离线工具说明：自动修复只调整节点 x/y 坐标，不修改节点类型、配置、连线、凭据或业务逻辑。</footer>
+
+  <div id="previewModal" class="modal" aria-hidden="true">
+    <div class="modal-head">
+      <strong id="modalTitle">流程全屏预览</strong>
+      <button id="closeModalBtn" type="button">关闭</button>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+
+  <script>
+    const NODE_W = 150;
+    const NODE_H = 42;
+    const GRID_X = 220;
+    const GRID_Y = 92;
+    const TAB_TYPES = new Set(['tab', 'subflow']);
+    const CONFIG_TYPES = new Set(['mqtt-broker', 'tls-config', 'modbus-client', 'serial-port', 'OpcUa-Endpoint', 'ui_tab', 'ui_group', 'ui_base', 'websocket-listener', 'websocket-client', 'http proxy', 'comment']);
+
+    const state = {
+      fileName: '',
+      original: null,
+      current: null,
+      analysis: null,
+      selectedTab: null,
+      previewMode: 'current',
+      fitPreview: false,
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    const sampleFlow = [
+      { id: 'tab1', type: 'tab', label: '示例：粉尘监测上传', disabled: false, info: '' },
+      { id: 'inj1', type: 'inject', z: 'tab1', name: '模拟采样', x: 120, y: 120, wires: [['fn1']] },
+      { id: 'fn1', type: 'function', z: 'tab1', name: '组包与校验', x: 340, y: 120, wires: [['sw1']] },
+      { id: 'sw1', type: 'switch', z: 'tab1', name: '报警分支', x: 560, y: 120, wires: [['mqtt1'], ['dbg1']] },
+      { id: 'mqtt1', type: 'mqtt out', z: 'tab1', name: '上传平台', x: 800, y: 90, wires: [] },
+      { id: 'dbg1', type: 'debug', z: 'tab1', name: '本地调试', x: 800, y: 170, wires: [] },
+      { id: 'orphan1', type: 'function', z: 'tab1', name: '孤立节点', x: 560, y: 260, wires: [] },
+    ];
+
+    function parseFlowJson(text) {
+      let data;
+      try { data = JSON.parse(text); } catch (error) { throw new Error('JSON 解析失败：' + error.message); }
+      if (!Array.isArray(data)) throw new Error('不是 Node-RED flows.json：根节点应为数组。');
+      if (data.some((item) => item && typeof item === 'object' && ('programs' in item || 'blocks' in item || 'symbols' in item))) {
+        throw new Error('检测到 PLC/工程导出结构，不是 Node-RED flow JSON。');
+      }
+      if (!data.some((item) => item && item.type === 'tab')) throw new Error('没有发现 type=tab 的 Node-RED 工作区。');
+      return data;
+    }
+
+    function getTabs(flow) {
+      return flow.filter((n) => n && TAB_TYPES.has(n.type));
+    }
+
+    function isVisualNode(node) {
+      return node && node.id && node.type && !TAB_TYPES.has(node.type) && !CONFIG_TYPES.has(node.type) && typeof node.z === 'string';
+    }
+
+    function getNodes(flow, tabId) {
+      return flow.filter((n) => isVisualNode(n) && n.z === tabId);
+    }
+
+    function buildEdges(nodes) {
+      const ids = new Set(nodes.map((n) => n.id));
+      const edges = [];
+      for (const source of nodes) {
+        const wires = Array.isArray(source.wires) ? source.wires : [];
+        wires.forEach((targets, outputIndex) => {
+          if (!Array.isArray(targets)) return;
+          targets.forEach((targetId) => {
+            if (ids.has(targetId)) edges.push({ source: source.id, target: targetId, outputIndex });
+          });
+        });
+      }
+      return edges;
+    }
+
+    function rectOf(node) {
+      const w = node.type === 'junction' ? 16 : NODE_W;
+      const h = node.type === 'junction' ? 16 : NODE_H;
+      return { left: (node.x || 0) - w / 2, right: (node.x || 0) + w / 2, top: (node.y || 0) - h / 2, bottom: (node.y || 0) + h / 2, w, h };
+    }
+
+    function overlap(a, b, gap = 12) {
+      const ra = rectOf(a), rb = rectOf(b);
+      return !(ra.right + gap < rb.left || rb.right + gap < ra.left || ra.bottom + gap < rb.top || rb.bottom + gap < ra.top);
+    }
+
+    function lineOf(edge, map) {
+      const a = map.get(edge.source), b = map.get(edge.target);
+      return a && b ? { x1: a.x || 0, y1: a.y || 0, x2: b.x || 0, y2: b.y || 0 } : null;
+    }
+
+    function ccw(ax, ay, bx, by, cx, cy) {
+      return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+    }
+
+    function intersects(a, b) {
+      if (!a || !b) return false;
+      const shared = (a.x1 === b.x1 && a.y1 === b.y1) || (a.x1 === b.x2 && a.y1 === b.y2) || (a.x2 === b.x1 && a.y2 === b.y1) || (a.x2 === b.x2 && a.y2 === b.y2);
+      if (shared) return false;
+      return ccw(a.x1, a.y1, b.x1, b.y1, b.x2, b.y2) !== ccw(a.x2, a.y2, b.x1, b.y1, b.x2, b.y2) &&
+        ccw(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1) !== ccw(a.x1, a.y1, a.x2, a.y2, b.x2, b.y2);
+    }
+
+    function distance(edge, map) {
+      const a = map.get(edge.source), b = map.get(edge.target);
+      if (!a || !b) return 0;
+      return Math.hypot((b.x || 0) - (a.x || 0), (b.y || 0) - (a.y || 0));
+    }
+
+    function analyzeTab(tab, flow) {
+      const nodes = getNodes(flow, tab.id);
+      const map = new Map(nodes.map((n) => [n.id, n]));
+      const edges = buildEdges(nodes);
+      const issues = [];
+      const counts = { overlap: 0, backward: 0, crossing: 0, longEdge: 0, shortEdge: 0, orphan: 0, badWire: 0, missingXY: 0 };
+
+      for (const node of nodes) {
+        if (!Number.isFinite(Number(node.x)) || !Number.isFinite(Number(node.y))) {
+          counts.missingXY += 1;
+          issues.push({ severity: 'error', title: '节点缺少坐标', detail: `${node.name || node.id} 缺少有效 x/y，编辑器中会堆叠或不可读。`, nodeId: node.id });
+        }
+        if (node.wires !== undefined && !Array.isArray(node.wires)) {
+          counts.badWire += 1;
+          issues.push({ severity: 'error', title: 'wires 格式错误', detail: `${node.name || node.id} 的 wires 不是二维数组。`, nodeId: node.id });
+        }
+      }
+
+      for (let i = 0; i < nodes.length; i += 1) {
+        for (let j = i + 1; j < nodes.length; j += 1) {
+          if (overlap(nodes[i], nodes[j])) {
+            counts.overlap += 1;
+            issues.push({ severity: 'warn', title: '节点重叠或过近', detail: `${nodes[i].name || nodes[i].id} 与 ${nodes[j].name || nodes[j].id} 间距不足。`, nodeId: nodes[i].id });
+          }
+        }
+      }
+
+      for (const edge of edges) {
+        const a = map.get(edge.source), b = map.get(edge.target);
+        if (!a || !b) continue;
+        const dx = (b.x || 0) - (a.x || 0);
+        const d = distance(edge, map);
+        if (dx < -20) {
+          counts.backward += 1;
+          issues.push({ severity: 'warn', title: '反向连线', detail: `${a.name || a.id} → ${b.name || b.id} 向左回流，建议主流程统一左到右。`, nodeId: edge.source });
+        }
+        if (d > 520) {
+          counts.longEdge += 1;
+          issues.push({ severity: 'info', title: '连线过长', detail: `${a.name || a.id} → ${b.name || b.id} 距离 ${Math.round(d)}px，建议增加中转或重排层级。`, nodeId: edge.source });
+        }
+        if (d < 70) {
+          counts.shortEdge += 1;
+          issues.push({ severity: 'info', title: '连线过短', detail: `${a.name || a.id} → ${b.name || b.id} 过近，可能导致节点贴边拥挤。`, nodeId: edge.source });
+        }
+      }
+
+      const lines = edges.map((e) => ({ edge: e, line: lineOf(e, map) }));
+      for (let i = 0; i < lines.length; i += 1) {
+        for (let j = i + 1; j < lines.length; j += 1) {
+          if (intersects(lines[i].line, lines[j].line)) counts.crossing += 1;
+        }
+      }
+      if (counts.crossing) {
+        issues.push({ severity: 'warn', title: '连线交叉', detail: `发现约 ${counts.crossing} 处直线交叉，建议调整同层顺序或插入 link/junction。` });
+      }
+
+      const degree = new Map(nodes.map((n) => [n.id, 0]));
+      edges.forEach((e) => {
+        degree.set(e.source, (degree.get(e.source) || 0) + 1);
+        degree.set(e.target, (degree.get(e.target) || 0) + 1);
+      });
+      for (const node of nodes) {
+        if ((degree.get(node.id) || 0) === 0 && node.type !== 'comment') {
+          counts.orphan += 1;
+          issues.push({ severity: 'info', title: '孤立节点', detail: `${node.name || node.id} 没有输入/输出连线，确认是否为废弃节点。`, nodeId: node.id });
+        }
+      }
+
+      const raw = {
+        validity: Math.max(0, 20 - counts.badWire * 8 - counts.missingXY * 6),
+        direction: Math.max(0, 20 - counts.backward * 4),
+        spacing: Math.max(0, 15 - counts.overlap * 3 - counts.shortEdge),
+        crossing: Math.max(0, 20 - counts.crossing * 3 - Math.ceil(counts.longEdge * 0.6) - Math.ceil(counts.shortEdge * 0.4)),
+        clustering: Math.max(0, 15 - counts.orphan * 2),
+        maintainability: Math.max(0, 10 - Math.max(0, nodes.length - 60) * 0.2),
+      };
+      const scoring = {
+        crossing: {
+          base: 20,
+          penalties: {
+            crossing: counts.crossing * 3,
+            longEdge: Math.ceil(counts.longEdge * 0.6),
+            shortEdge: Math.ceil(counts.shortEdge * 0.4),
+          },
+          thresholds: {
+            crossing: '每处交叉扣 3 分',
+            longEdge: '超过 520px 记长线，约每 2 条扣 1 分',
+            shortEdge: '低于 70px 记短线，约每 3 条扣 1 分',
+          },
+        },
+      };
+      const score = Math.round(Object.values(raw).reduce((a, b) => a + b, 0));
+      return { tab, nodes, edges, issues, counts, score, breakdown: raw, scoring };
+    }
+
+    function analyzeFlow(flow) {
+      const tabs = getTabs(flow);
+      const tabResults = tabs.map((tab) => analyzeTab(tab, flow));
+      const allIssues = tabResults.flatMap((r) => r.issues.map((issue) => ({ ...issue, tab: r.tab.label || r.tab.id })));
+      const avgScore = tabResults.length ? Math.round(tabResults.reduce((sum, r) => sum + r.score, 0) / tabResults.length) : 0;
+      return { tabs, tabResults, allIssues, score: avgScore };
+    }
+
+    function autoLayout(flow) {
+      const copy = structuredClone(flow);
+      const tabs = getTabs(copy);
+      for (const tab of tabs) {
+        const nodes = getNodes(copy, tab.id);
+        const idToNode = new Map(nodes.map((n) => [n.id, n]));
+        const edges = buildEdges(nodes);
+        const indegree = new Map(nodes.map((n) => [n.id, 0]));
+        const outgoing = new Map(nodes.map((n) => [n.id, []]));
+        edges.forEach((e) => {
+          indegree.set(e.target, (indegree.get(e.target) || 0) + 1);
+          outgoing.get(e.source)?.push(e.target);
+        });
+        const queue = nodes.filter((n) => (indegree.get(n.id) || 0) === 0).sort((a, b) => (a.y || 0) - (b.y || 0));
+        const layer = new Map(queue.map((n) => [n.id, 0]));
+        while (queue.length) {
+          const node = queue.shift();
+          const base = layer.get(node.id) || 0;
+          for (const target of outgoing.get(node.id) || []) {
+            const next = Math.max(layer.get(target) || 0, base + 1);
+            layer.set(target, next);
+            indegree.set(target, (indegree.get(target) || 0) - 1);
+            if ((indegree.get(target) || 0) === 0) queue.push(idToNode.get(target));
+          }
+        }
+        nodes.forEach((n) => { if (!layer.has(n.id)) layer.set(n.id, Math.max(0, Math.round(((n.x || 120) - 120) / GRID_X))); });
+        const groups = new Map();
+        nodes.forEach((n) => {
+          const l = layer.get(n.id) || 0;
+          if (!groups.has(l)) groups.set(l, []);
+          groups.get(l).push(n);
+        });
+        [...groups.keys()].sort((a, b) => a - b).forEach((l) => {
+          const group = groups.get(l).sort((a, b) => (a.y || 0) - (b.y || 0));
+          group.forEach((node, index) => {
+            node.x = 120 + l * GRID_X;
+            node.y = 100 + index * GRID_Y;
+          });
+        });
+      }
+      return copy;
+    }
+
+    function setFlow(flow, fileName) {
+      state.fileName = fileName;
+      state.original = structuredClone(flow);
+      state.current = structuredClone(flow);
+      state.analysis = analyzeFlow(state.current);
+      state.selectedTab = state.analysis.tabs[0]?.id || null;
+      render();
+    }
+
+    function gradeText(score) {
+      if (score >= 90) return ['EXCELLENT', 'var(--green)'];
+      if (score >= 75) return ['GOOD', 'var(--cyan)'];
+      if (score >= 60) return ['NEEDS FIX', 'var(--amber)'];
+      return ['RISK', 'var(--red)'];
+    }
+
+    function render() {
+      const analysis = state.analysis;
+      $('fileName').textContent = state.fileName || '未上传';
+      $('tabCount').textContent = analysis?.tabs.length || 0;
+      $('nodeCount').textContent = analysis ? analysis.tabResults.reduce((s, r) => s + r.nodes.length, 0) : 0;
+      $('wireCount').textContent = analysis ? analysis.tabResults.reduce((s, r) => s + r.edges.length, 0) : 0;
+      $('repairBtn').disabled = !analysis;
+      $('downloadBtn').disabled = !analysis;
+      $('reportBtn').disabled = !analysis;
+      $('fitBtn').disabled = !analysis;
+      $('fullscreenBtn').disabled = !analysis;
+      renderPreviewModeButtons();
+      renderScore();
+      renderTabs();
+      renderIssues();
+      renderPreview();
+    }
+
+    function renderScore() {
+      const analysis = state.analysis;
+      const score = analysis?.score || 0;
+      $('scoreRing').style.setProperty('--score', score);
+      $('scoreNum').textContent = analysis ? score : '--';
+      const [text, color] = gradeText(score);
+      $('grade').innerHTML = `<span class="status-dot"></span>${analysis ? text : 'WAITING'}`;
+      $('grade').style.color = analysis ? color : 'var(--green)';
+      const selected = analysis?.tabResults.find((r) => r.tab.id === state.selectedTab) || analysis?.tabResults[0];
+      const labels = { validity: '合法性', direction: '方向性', spacing: '间距', crossing: '连线质量', clustering: '聚类', maintainability: '维护性' };
+      const max = { validity: 20, direction: 20, spacing: 15, crossing: 20, clustering: 15, maintainability: 10 };
+      $('breakdown').innerHTML = selected ? Object.entries(selected.breakdown).map(([key, value]) => {
+        const percent = Math.max(0, Math.min(100, Math.round(value / max[key] * 100)));
+        const hint = key === 'crossing' ? ` title="交叉 ${selected.counts.crossing}，长线 ${selected.counts.longEdge}，短线 ${selected.counts.shortEdge}"` : '';
+        return `<div class="bar-row"${hint}><span>${labels[key]}</span><div class="bar"><span style="--w:${percent}%"></span></div><span>${Math.round(value)}/${max[key]}</span></div>`;
+      }).join('') : '<div class="empty">暂无评分。</div>';
+      $('scoreNote').innerHTML = selected ? renderScoreNote(selected) : '上传后会显示扣分原因。';
+    }
+
+    function renderScoreNote(selected) {
+      const wire = selected.scoring?.crossing;
+      if (!wire) return '';
+      const crossingPenalty = wire.penalties.crossing;
+      const longPenalty = wire.penalties.longEdge;
+      const shortPenalty = wire.penalties.shortEdge;
+      const totalPenalty = crossingPenalty + longPenalty + shortPenalty;
+      const score = Math.round(selected.breakdown.crossing);
+      const parts = [
+        `交叉 ${selected.counts.crossing} 处 ×3 = ${crossingPenalty}`,
+        `长线 ${selected.counts.longEdge} 条 = ${longPenalty}`,
+        `短线 ${selected.counts.shortEdge} 条 = ${shortPenalty}`,
+      ];
+      return `<strong>连线质量 ${score}/20：</strong> 基础 20 分，${parts.join('，')}，合计扣 ${totalPenalty} 分。判定规则：直线段相交算交叉，距离超过 520px 算长线，低于 70px 算短线；分数最低封顶为 0。`;
+    }
+
+    function renderPreviewModeButtons() {
+      const modes = { viewCurrentBtn: 'current', viewOriginalBtn: 'original', viewCompareBtn: 'compare', viewJsonBtn: 'json' };
+      Object.entries(modes).forEach(([id, mode]) => {
+        const el = $(id);
+        if (!el) return;
+        el.classList.toggle('active', state.previewMode === mode);
+        el.disabled = !state.analysis;
+      });
+    }
+
+    function renderTabs() {
+      const tabs = state.analysis?.tabs || [];
+      $('tabBar').innerHTML = tabs.map((tab) => `<button class="tab-btn ${tab.id === state.selectedTab ? 'active' : ''}" data-tab="${escapeHtml(tab.id)}">${escapeHtml(tab.label || tab.id)}</button>`).join('');
+      $('tabBar').querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => { state.selectedTab = btn.dataset.tab; render(); });
+      });
+    }
+
+    function renderIssues() {
+      const selected = state.analysis?.tabResults.find((r) => r.tab.id === state.selectedTab) || state.analysis?.tabResults[0];
+      const issues = selected?.issues || [];
+      $('issues').innerHTML = issues.length ? issues.map((issue) => `
+        <div class="issue ${issue.severity}">
+          <div class="sev">${issue.severity.toUpperCase()}</div>
+          <div><div class="issue-title">${escapeHtml(issue.title)}</div><div class="issue-detail">${escapeHtml(issue.detail)}</div></div>
+        </div>
+      `).join('') : '<div class="empty">这个 tab 暂未发现明显布局问题。</div>';
+    }
+
+    function getAnalysisFor(flow) {
+      if (!flow) return null;
+      const analysis = analyzeFlow(flow);
+      return analysis.tabResults.find((r) => r.tab.id === state.selectedTab) || analysis.tabResults[0] || null;
+    }
+
+    function renderPreview() {
+      const svg = $('preview');
+      const json = $('jsonPreview');
+      const shell = $('previewShell');
+      json.classList.toggle('active', state.previewMode === 'json');
+      shell.classList.toggle('hidden', state.previewMode === 'json');
+      if (state.previewMode === 'json') {
+        const source = state.current || state.original;
+        json.textContent = source ? JSON.stringify(source, null, 2) : '等待上传 flows.json';
+        svg.innerHTML = '';
+        return;
+      }
+
+      if (state.previewMode === 'compare') {
+        renderComparePreview(svg);
+        return;
+      }
+
+      const source = state.previewMode === 'original' ? state.original : state.current;
+      const selected = getAnalysisFor(source);
+      renderSinglePreview(svg, selected, state.previewMode === 'original' ? '原始布局' : '当前布局');
+    }
+
+    function renderComparePreview(svg) {
+      const original = getAnalysisFor(state.original);
+      const current = getAnalysisFor(state.current);
+      if (!original && !current) {
+        svg.setAttribute('viewBox', '0 0 960 520');
+        svg.innerHTML = '<text x="28" y="42" fill="#89a9b8">等待上传 flows.json</text>';
+        return;
+      }
+      const left = buildPreviewSvg(original, '原始布局');
+      const right = buildPreviewSvg(current, '当前/修复后布局');
+      const gap = 80;
+      const width = left.width + right.width + gap;
+      const height = Math.max(left.height, right.height) + 70;
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svg.style.minWidth = state.fitPreview ? '100%' : `${Math.max(960, width)}px`;
+      svg.style.minHeight = state.fitPreview ? '520px' : `${Math.max(520, height)}px`;
+      svg.innerHTML = `
+        <text x="24" y="30" fill="#23deee" font-size="16" font-family="Microsoft YaHei">原始布局</text>
+        <text x="${left.width + gap + 24}" y="30" fill="#44dc92" font-size="16" font-family="Microsoft YaHei">当前/修复后布局</text>
+        <g transform="translate(0 50)">${left.body}</g>
+        <line x1="${left.width + gap / 2}" y1="18" x2="${left.width + gap / 2}" y2="${height}" stroke="rgba(35,222,238,.18)" />
+        <g transform="translate(${left.width + gap} 50)">${right.body}</g>
+      `;
+    }
+
+    function renderSinglePreview(svg, selected, label) {
+      if (!selected) {
+        svg.setAttribute('viewBox', '0 0 960 520');
+        svg.innerHTML = '<text x="28" y="42" fill="#89a9b8">等待上传 flows.json</text>';
+        return;
+      }
+      const built = buildPreviewSvg(selected, label);
+      svg.setAttribute('viewBox', `0 0 ${built.width} ${built.height}`);
+      svg.style.minWidth = state.fitPreview ? '100%' : `${Math.max(960, built.width)}px`;
+      svg.style.minHeight = state.fitPreview ? '520px' : `${Math.max(520, built.height)}px`;
+      svg.innerHTML = built.body;
+    }
+
+    function buildPreviewSvg(selected, label) {
+      if (!selected) return { width: 960, height: 520, body: '<text x="28" y="42" fill="#89a9b8">暂无预览</text>' };
+      const nodes = selected.nodes;
+      const map = new Map(nodes.map((n) => [n.id, n]));
+      const minX = Math.min(0, ...nodes.map((n) => (n.x || 0) - 120));
+      const minY = Math.min(0, ...nodes.map((n) => (n.y || 0) - 80));
+      const offsetX = minX < 0 ? Math.abs(minX) + 24 : 0;
+      const offsetY = minY < 0 ? Math.abs(minY) + 24 : 0;
+      const maxX = Math.max(960, ...nodes.map((n) => (n.x || 0) + offsetX + 180));
+      const maxY = Math.max(520, ...nodes.map((n) => (n.y || 0) + offsetY + 110));
+      const issueNodeIds = new Set(selected.issues.map((i) => i.nodeId).filter(Boolean));
+      const grid = [];
+      for (let x = 0; x < maxX; x += 80) grid.push(`<line class="grid-line" x1="${x}" y1="0" x2="${x}" y2="${maxY}" />`);
+      for (let y = 0; y < maxY; y += 60) grid.push(`<line class="grid-line" x1="0" y1="${y}" x2="${maxX}" y2="${y}" />`);
+      const wires = selected.edges.map((e) => {
+        const a = map.get(e.source), b = map.get(e.target);
+        if (!a || !b) return '';
+        const d = distance(e, map);
+        const ax = (a.x || 0) + offsetX;
+        const ay = (a.y || 0) + offsetY;
+        const bx = (b.x || 0) + offsetX;
+        const by = (b.y || 0) + offsetY;
+        const midX = (ax + bx) / 2;
+        return `<path class="wire ${d > 520 ? 'long' : ''}" d="M ${ax} ${ay} C ${midX} ${ay}, ${midX} ${by}, ${bx} ${by}" />`;
+      }).join('');
+      const nodeSvg = nodes.map((n) => {
+        const shifted = { ...n, x: (n.x || 0) + offsetX, y: (n.y || 0) + offsetY };
+        const r = rectOf(shifted);
+        const cls = issueNodeIds.has(n.id) ? 'warn' : '';
+        const name = truncate(n.name || n.type || n.id, 18);
+        return `<g><rect class="node-rect ${cls}" x="${r.left}" y="${r.top}" width="${r.w}" height="${r.h}" rx="8"/><text class="node-text" x="${r.left + 10}" y="${r.top + 18}">${escapeHtml(name)}</text><text class="node-text" x="${r.left + 10}" y="${r.top + 34}" fill="#89a9b8">${escapeHtml(truncate(n.type, 20))}</text></g>`;
+      }).join('');
+      const note = `<text x="24" y="${maxY - 22}" fill="#89a9b8" font-size="12" font-family="Consolas, Monaco, monospace">${escapeHtml(label)} · ${nodes.length} nodes · ${selected.edges.length} wires · score ${selected.score}/100</text>`;
+      return { width: maxX, height: maxY, body: grid.join('') + wires + nodeSvg + note };
+    }
+
+    function makeReport() {
+      const a = state.analysis;
+      if (!a) return '';
+      return [
+        '# Node-RED 流程体检报告',
+        '',
+        `文件：${state.fileName}`,
+        `总评分：${a.score}/100`,
+        `Tab 数：${a.tabs.length}`,
+        `节点数：${a.tabResults.reduce((s, r) => s + r.nodes.length, 0)}`,
+        `连线数：${a.tabResults.reduce((s, r) => s + r.edges.length, 0)}`,
+        '',
+        ...a.tabResults.flatMap((r) => [
+          `## ${r.tab.label || r.tab.id}`,
+          '',
+          `评分：${r.score}/100`,
+          `节点：${r.nodes.length}，连线：${r.edges.length}`,
+          '',
+          ...(r.issues.length ? r.issues.map((i) => `- [${i.severity}] ${i.title}：${i.detail}`) : ['- 未发现明显布局问题']),
+          '',
+        ]),
+      ].join('\n');
+    }
+
+    function download(name, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    function truncate(value, length) {
+      const text = String(value ?? '');
+      return text.length > length ? text.slice(0, length - 1) + '…' : text;
+    }
+
+    function handleText(text, name) {
+      try {
+        setFlow(parseFlowJson(text), name);
+      } catch (error) {
+        alert(error.message || String(error));
+      }
+    }
+
+    $('fileInput').addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      handleText(await file.text(), file.name);
+    });
+
+    const dropzone = $('dropzone');
+    ['dragenter', 'dragover'].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      dropzone.classList.remove('dragover');
+    }));
+    dropzone.addEventListener('drop', async (event) => {
+      const file = event.dataTransfer.files?.[0];
+      if (!file) return;
+      handleText(await file.text(), file.name);
+    });
+
+    $('sampleBtn').addEventListener('click', () => setFlow(sampleFlow, 'sample-flows.json'));
+    [
+      ['viewCurrentBtn', 'current'],
+      ['viewOriginalBtn', 'original'],
+      ['viewCompareBtn', 'compare'],
+      ['viewJsonBtn', 'json'],
+    ].forEach(([id, mode]) => {
+      $(id).addEventListener('click', () => {
+        state.previewMode = mode;
+        render();
+      });
+    });
+    $('fitBtn').addEventListener('click', () => {
+      state.fitPreview = !state.fitPreview;
+      $('fitBtn').textContent = state.fitPreview ? '取消适配' : '适配视图';
+      renderPreview();
+    });
+    $('fullscreenBtn').addEventListener('click', () => {
+      if (!state.analysis) return;
+      const modal = $('previewModal');
+      const body = $('modalBody');
+      const clone = state.previewMode === 'json'
+        ? `<pre class="json-preview active" style="min-height: 820px">${escapeHtml($('jsonPreview').textContent)}</pre>`
+        : $('preview').outerHTML;
+      $('modalTitle').textContent = `流程全屏预览 · ${state.previewMode}`;
+      body.innerHTML = clone;
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+    $('closeModalBtn').addEventListener('click', () => {
+      $('previewModal').classList.remove('active');
+      $('previewModal').setAttribute('aria-hidden', 'true');
+      $('modalBody').innerHTML = '';
+    });
+    $('repairBtn').addEventListener('click', () => {
+      if (!state.current) return;
+      state.current = autoLayout(state.current);
+      state.analysis = analyzeFlow(state.current);
+      render();
+    });
+    $('downloadBtn').addEventListener('click', () => {
+      if (!state.current) return;
+      const base = (state.fileName || 'flows.json').replace(/\.json$/i, '');
+      download(`${base}.fixed.json`, JSON.stringify(state.current, null, 2), 'application/json;charset=utf-8');
+    });
+    $('reportBtn').addEventListener('click', () => {
+      const base = (state.fileName || 'flows.json').replace(/\.json$/i, '');
+      download(`${base}.report.md`, makeReport(), 'text/markdown;charset=utf-8');
+    });
+
+    render();
+  </script>
+</body>
+</html>

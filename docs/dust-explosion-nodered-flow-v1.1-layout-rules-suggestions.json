@@ -1,0 +1,9 @@
+[
+  {
+    "node_id": "dust_hik_to_base64_lr",
+    "action": "MOVE_RIGHT",
+    "new_x": 1360,
+    "new_y": 720,
+    "reason": "与 2.3 生成海康联动视频报警数据 间距过近，小于 15px"
+  }
+]

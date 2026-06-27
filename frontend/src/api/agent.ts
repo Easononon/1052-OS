@@ -138,6 +138,10 @@ export type ToolFinishedInfo = {
   callId?: string
   resultPreview?: string
   durationMs?: number
+  retryable?: boolean
+  hint?: string
+  breaker?: 'open' | 'closed'
+  failureCount?: number
 }
 
 // UI-facing record of a tool invocation (running / settled). Lives here so
@@ -151,6 +155,12 @@ export interface ToolCallEntry {
   resultPreview?: string
   error?: string
   durationMs?: number
+  retryable?: boolean
+  hint?: string
+  breaker?: 'open' | 'closed'
+  failureCount?: number
+  startedAt: number
+  finishedAt?: number
 }
 
 export type StreamHandlers = {

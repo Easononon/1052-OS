@@ -17,6 +17,7 @@ def _mk_task(tid, **kw):
         dtype=kw.get("dtype", "u16"),
         endian=kw.get("endian", "ABCD"),
         interval=kw.get("interval", 1.0),
+        mq_topic=kw.get("mq_topic", ""),
     )
 
 
@@ -31,7 +32,7 @@ def test_safe_id_preserves_underscores():
 def test_empty_tasks_returns_tabs_and_broker_only():
     flows = build_flows_json({})
     types = sorted(n["type"] for n in flows)
-    assert types == ["mqtt-broker", "tab", "tab"]
+    assert types == ["mqtt-broker", "tab", "tab", "tab"]
     broker = next(n for n in flows if n["type"] == "mqtt-broker")
     assert broker["broker"] == "localhost"
     assert broker["port"] == "1883"
@@ -57,6 +58,20 @@ def test_opcua_tag_uses_opcua_tab():
     flows = build_flows_json(tasks)
     in_node = next(n for n in flows if n["type"] == "mqtt in")
     assert in_node["z"] == "tab_opcua"
+
+
+def test_mqtt_tag_uses_mqtt_tab_and_absolute_topic():
+    tasks = {"TEMP": _mk_task("TEMP", protocol="mqtt", site="s1", device="d1", mq_topic="device/temperature")}
+    flows = build_flows_json(tasks)
+    in_node = next(n for n in flows if n["type"] == "mqtt in")
+    assert in_node["z"] == "tab_mqtt"
+    assert in_node["topic"] == "device/temperature"
+
+
+def test_unknown_protocol_is_not_grouped_as_opcua():
+    tasks = {"x": _mk_task("x", protocol="unknown", site="s1", device="d1")}
+    flows = build_flows_json(tasks)
+    assert not any(n["type"] == "mqtt in" for n in flows)
 
 
 def test_wires_connect_mqtt_in_to_debug():

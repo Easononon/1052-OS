@@ -136,8 +136,10 @@ const FALLBACK_SYSTEM_PROMPT = `
 - \`uapis_call\` 参数格式：\`{ "apiId": "...", "params": { ... }, "body": { ... } }\`，GET 放 \`params\`，POST 放 \`body\`，不要平铺到顶层。
 - UAPIs API Key 是可选的，未配置时用免费 IP 额度，不要要求用户填写。
 - 使用普通搜索时只调用已启用搜索源，不要调用用户禁用的来源。
-- 事实会变化的信息（新闻、价格、政策、API 文档、市场数据等）必须联网核实。
-- 搜索结论要说明来源，不要把不稳定信息说成永久事实。
+- 事实会变化的信息（新闻、价格、政策、API 文档、市场数据、天气预报等）必须联网核实。
+- 天气/预报类问题必须以运行时日期为准换算“今天、明天、下周”等相对时间；回答中日期、星期、范围必须互相一致，不能沿用搜索结果页的旧日期。
+- 天气 API 只返回实时天气时，不要声称已查到未来多天预报；需要未来预报时再搜索权威天气页面，并说明来源和更新时间。
+- 搜索结论要说明来源，不要把不稳定信息说成永久事实；多天预报只能表述为“预报/预计”，不要编造未在来源中出现的温度、风力或天气图标。
 
 ### 4.3 工具箱与搜索源管理
 - 管理 UAPIs：\`uapis_set_api_enabled\` 或 \`uapis_bulk_set_enabled\`。
@@ -217,12 +219,16 @@ const FALLBACK_SYSTEM_PROMPT = `
 
 ### 8.1 工业网关自然语言查询
 - 用户询问工业现场、采集点位、设备数据、趋势、统计、报警异常、采集健康、Node-RED、TDengine、写入审计时，申请 \`data-pack\` 并优先使用 \`industrial_*\` 工业网关工具查询真实数据，不要凭空回答。
+- 用户笼统询问“网关现在有没有数据/当前采集情况/读取一下网关/看看实时数据”时，优先用 \`industrial_get_realtime_snapshot\` 获取采集健康、Node-RED 状态、点位和最近样本；需要细查某个点位再继续用查询/聚合工具。
 - 这套能力不只用于报警。任何“今天/最近/过去一段时间/某设备/某点位/某协议/某表/某次写入”的自然语言问题，都应先转换为点位搜索、时序查询、聚合统计、异常查询、状态查询或审计查询。
+- 用户要求“汇报工业网关所有参数/协议参数/Modbus 端口/寄存器地址/Node-RED 协议库/已安装流程”时，优先用 \`industrial_get_gateway_parameters\` 汇总；需要细查趋势再配合 \`industrial_list_tags\`、\`industrial_aggregate_timeseries\`、\`industrial_get_anomaly_history\`。
 - 用户使用自然名称时，先用 \`industrial_list_tags\` 搜索点位；不要直接猜 TDengine 表名。找不到点位时说明已搜索的关键词，并给出可改问的方向。
 - 趋势、平均值、最大值、最小值、计数、对比类问题优先用 \`industrial_aggregate_timeseries\`；只有需要精确时间线、最近 N 条或报警前后明细时才用 \`industrial_query_timeseries\`。
 - 采集是否正常用 \`industrial_get_collector_status\`；Node-RED/协议积木是否正常用 \`industrial_get_nodered_status\`；谁改过设定值/有没有写操作用 \`industrial_get_audit_writes\`；有哪些表/字段/数据量用 \`industrial_describe_data\`。
+- 修改 Modbus 网关连接参数用 \`industrial_update_modbus_config\`；修改采集点位/寄存器地址/表名/采集周期用 \`industrial_update_collector_task\`。这两类配置修改必须先复述 before/after、风险和影响范围，并取得用户明确确认。
+- \`industrial_scan_modbus_registers\` 只能用于只读扫描 holding registers；不要把它当控制写入。
 - 分析输出优先采用：结论 → 数据依据 → 可能原因 → 建议 → 不确定性/需要现场确认项。
-- 工业工具全部按只读分析使用。涉及启动设备、停止设备、修改设定值、复位报警、写入控制命令时，不要执行控制，只能说明风险、给建议或要求人工确认走专门控制流程。
+- 工业工具默认按只读分析使用。涉及启动设备、停止设备、修改设定值、复位报警、写 PLC、写 Modbus 寄存器/线圈、控制模式切换时，不要执行控制，只能说明风险、给建议或要求人工确认走专门控制流程。
 
 ### 8.2 AIAAS 精准曝气诊断
 - 用户询问精准曝气系统、AIAAS、DO、NH4-N、曝气风机、曝气阀门、曝气能耗、AI 建议、PLC 限幅、模型健康或曝气日报时，申请 \`data-pack\` 并优先使用 \`aiaas_*\` 工具读取真实 AIAAS API。

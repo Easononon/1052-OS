@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { NotificationsApi } from '../api/notifications'
 import { IconChevron, IconEdit } from './Icons'
 import { NAV_ITEMS } from '../mirror/nav'
+import IndustrialAgentMark from './IndustrialAgentMark'
 import ProfileModal, { type Profile } from './ProfileModal'
 
 const KEY = 'agent.profile'
@@ -70,8 +71,10 @@ export default function Sidebar() {
     <>
       <aside className={'sidebar' + (collapsed ? ' collapsed' : '')}>
         <div className="brand">
+          <IndustrialAgentMark size={38} />
           <div className="brand-text">
-            <div className="brand-name">1052 OS</div>
+            <div className="brand-name">工控智能 Agent</div>
+            <div className="brand-sub">Industrial Copilot</div>
           </div>
           <button
             className="sidebar-toggle"
@@ -104,7 +107,7 @@ export default function Sidebar() {
         <div className="sidebar-spacer" />
 
         <div className="sidebar-ribbon" aria-hidden="true">
-          <span>1052</span>
+          <span>AGENT</span>
           <i>01</i>
           <i>02</i>
           <i>03</i>

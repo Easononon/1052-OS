@@ -256,6 +256,22 @@ export const IconStop = (p: Props) => (
   </svg>
 )
 
+export const IconMic = (p: Props) => (
+  <svg {...base(p)}>
+    <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+    <path d="M5 11a7 7 0 0 0 14 0" />
+    <path d="M12 18v3M8 21h8" />
+  </svg>
+)
+
+export const IconVolume = (p: Props) => (
+  <svg {...base(p)}>
+    <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+    <path d="M16 9.5a4 4 0 0 1 0 5" />
+    <path d="M19 7a8 8 0 0 1 0 10" />
+  </svg>
+)
+
 export const IconServer = (p: Props) => (
   <svg {...base(p)}>
     <rect x="2" y="2" width="20" height="8" rx="2" />
