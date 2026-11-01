@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { requestSpeechTts } from '../api/speech'
+import { requestSpeechAsr, requestSpeechTts } from '../api/speech'
 import { SettingsApi, type SpeechSettings } from '../api/settings'
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
+
+type BrowserSpeechRecognitionMode = 'auto' | 'browser' | 'recorder'
+
+type SpeechRecognitionOptions = {
+  mode?: BrowserSpeechRecognitionMode
+}
 
 type SpeechRecognitionLike = {
   continuous: boolean
@@ -10,7 +16,8 @@ type SpeechRecognitionLike = {
   lang: string
   onstart: (() => void) | null
   onend: (() => void) | null
-  onerror: ((event: { error?: string; message?: string }) => void) | null
+  onerror: ((event: { error?: SpeechRecognitionErrorCode; message?: string }) => void) | null
+  onnomatch: (() => void) | null
   onresult: ((event: SpeechRecognitionResultEventLike) => void) | null
   start: () => void
   stop: () => void
@@ -26,6 +33,34 @@ type SpeechRecognitionResultEventLike = {
 }
 
 type VoiceStatus = 'idle' | 'listening' | 'processing' | 'speaking' | 'error' | 'unsupported'
+
+type SpeechRecognitionErrorCode =
+  | 'aborted'
+  | 'audio-capture'
+  | 'bad-grammar'
+  | 'language-not-supported'
+  | 'network'
+  | 'no-speech'
+  | 'not-allowed'
+  | 'phrases-not-supported'
+  | 'service-not-allowed'
+
+const SPEECH_RECOGNITION_ERROR_MESSAGES: Partial<Record<SpeechRecognitionErrorCode, string>> = {
+  'not-allowed': '麦克风权限被拒绝。请在浏览器地址栏允许麦克风后重试。',
+  'service-not-allowed': '浏览器语音识别服务不可用。请换 Chrome/Edge，或检查系统语音权限。',
+  'audio-capture': '没有检测到可用麦克风，请检查系统输入设备。',
+  'network': '语音识别服务连接失败，请检查网络后重试。',
+  'no-speech': '没有识别到声音，请靠近麦克风再试一次。',
+  'language-not-supported': '当前语音识别语言不受支持，请在设置里切换识别语言。',
+  'bad-grammar': '语音识别语法配置无效。',
+  'phrases-not-supported': '当前浏览器不支持语音短语增强。',
+  'aborted': '语音识别已停止。',
+}
+
+function getSpeechRecognitionErrorMessage(error?: SpeechRecognitionErrorCode, message?: string) {
+  if (error && SPEECH_RECOGNITION_ERROR_MESSAGES[error]) return SPEECH_RECOGNITION_ERROR_MESSAGES[error]
+  return message || (error ? `语音识别失败：${error}` : '语音识别失败。')
+}
 
 type StartListeningOptions = {
   onTranscript: (text: string) => void
@@ -120,6 +155,10 @@ export function useVoiceIO() {
   const [interimTranscript, setInterimTranscript] = useState('')
   const [message, setMessage] = useState('')
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const voiceOptionsRef = useRef<StartListeningOptions | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
 
@@ -139,7 +178,18 @@ export function useVoiceIO() {
     }
   }, [])
 
+  const stopRecorderStream = useCallback(() => {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop())
+    mediaStreamRef.current = null
+  }, [])
+
   const stopListening = useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      setStatus('processing')
+      setMessage('正在识别语音。')
+      return
+    }
     recognitionRef.current?.stop()
     recognitionRef.current = null
     setInterimTranscript('')
@@ -159,13 +209,88 @@ export function useVoiceIO() {
     setStatus((current) => (current === 'speaking' ? 'idle' : current))
   }, [stopEdgeAudio, ttsSupported])
 
+  const startRecorderRecognition = useCallback(
+    async (options: StartListeningOptions) => {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        setStatus('unsupported')
+        setMessage('当前浏览器不支持录音识别。')
+        return
+      }
+
+      cancelSpeaking()
+      voiceOptionsRef.current = options
+      audioChunksRef.current = []
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        mediaStreamRef.current = stream
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : undefined
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+        mediaRecorderRef.current = recorder
+
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunksRef.current.push(event.data)
+        }
+        recorder.onerror = () => {
+          mediaRecorderRef.current = null
+          stopRecorderStream()
+          setStatus('error')
+          setMessage('录音失败，请检查麦克风权限。')
+        }
+        recorder.onstop = () => {
+          const audio = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+          audioChunksRef.current = []
+          mediaRecorderRef.current = null
+          stopRecorderStream()
+          setStatus('processing')
+          setMessage('正在识别语音。')
+          requestSpeechAsr(audio)
+            .then((result) => {
+              const text = result.text.trim()
+              if (!text) {
+                setStatus('error')
+                setMessage('语音识别没有返回文本。')
+                return
+              }
+              setStatus('processing')
+              setMessage('已识别语音。')
+              voiceOptionsRef.current?.onTranscript(text)
+              if (settings.autoSendAfterFinal) voiceOptionsRef.current?.onAutoSend?.(text)
+            })
+            .catch((error) => {
+              setStatus('error')
+              setMessage(error instanceof Error ? error.message : '语音识别失败。')
+            })
+        }
+
+        recorder.start()
+        setStatus('listening')
+        setMessage('正在录音，再点一次麦克风结束识别。')
+      } catch (error) {
+        stopRecorderStream()
+        setStatus('error')
+        setMessage(error instanceof DOMException && error.name === 'NotAllowedError'
+          ? '麦克风权限被拒绝。请在浏览器地址栏允许麦克风后重试。'
+          : '麦克风启动失败，请检查系统输入设备。')
+      }
+    },
+    [cancelSpeaking, settings.autoSendAfterFinal, stopRecorderStream],
+  )
+
   const startListening = useCallback(
-    ({ onTranscript, onAutoSend }: StartListeningOptions) => {
+    ({ onTranscript, onAutoSend }: StartListeningOptions, options: SpeechRecognitionOptions = {}) => {
       if (!settings.inputEnabled) return
+      if (options.mode === 'recorder') {
+        void startRecorderRecognition({ onTranscript, onAutoSend })
+        return
+      }
       const Recognition = getRecognitionConstructor()
       if (!Recognition) {
-        setStatus('unsupported')
-        setMessage('当前浏览器不支持语音识别，请使用 Chrome 或 Edge。')
+        void startRecorderRecognition({ onTranscript, onAutoSend })
         return
       }
 
@@ -181,8 +306,12 @@ export function useVoiceIO() {
       }
       recognition.onerror = (event) => {
         setStatus('error')
-        setMessage(event.error === 'not-allowed' ? '麦克风权限被拒绝。' : event.message || '语音识别失败。')
+        setMessage(getSpeechRecognitionErrorMessage(event.error, event.message))
         recognitionRef.current = null
+      }
+      recognition.onnomatch = () => {
+        setStatus('error')
+        setMessage('没有听清楚，请再说一遍。')
       }
       recognition.onend = () => {
         recognitionRef.current = null
@@ -215,7 +344,7 @@ export function useVoiceIO() {
         recognitionRef.current = null
       }
     },
-    [cancelSpeaking, settings.autoSendAfterFinal, settings.inputEnabled, settings.recognitionLanguage],
+    [cancelSpeaking, settings.autoSendAfterFinal, settings.inputEnabled, settings.recognitionLanguage, startRecorderRecognition],
   )
 
   const speak = useCallback(
@@ -278,10 +407,12 @@ export function useVoiceIO() {
   useEffect(() => {
     return () => {
       recognitionRef.current?.abort()
+      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+      stopRecorderStream()
       stopEdgeAudio()
       if (ttsSupported) window.speechSynthesis.cancel()
     }
-  }, [stopEdgeAudio, ttsSupported])
+  }, [stopEdgeAudio, stopRecorderStream, ttsSupported])
 
   return {
     settings,

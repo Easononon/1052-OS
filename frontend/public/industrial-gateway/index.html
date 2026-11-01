@@ -619,6 +619,20 @@
     .nr-spacer { flex: 1; }
     .nr-bar .btn { padding: 2px 8px; font-size: 10px; }
     #nr-iframe { width: 100%; height: calc(100vh - 220px); min-height: 480px; border: 1px solid var(--rule); background: #f7f5ef; }
+    #dash-iframe { display: none; width: 100%; height: calc(100vh - 220px); min-height: 480px; border: 1px solid var(--rule); background: #f7f5ef; }
+    #dash-iframe.loaded { display: block; }
+    .nr-placeholder {
+      display: grid;
+      min-height: 260px;
+      place-items: center;
+      border: 1px dashed var(--rule);
+      background: #f7f5ef;
+      color: var(--ink-3);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-align: center;
+    }
+    .nr-placeholder strong { display: block; margin-bottom: 6px; color: var(--ink); font-size: 13px; }
     .nr-help { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-top: 6px; line-height: 1.5; }
     .nr-help code { background: #efece4; padding: 1px 4px; border-radius: 2px; }
 
@@ -1502,11 +1516,18 @@
         <div class="nr-bar">
           <span class="nr-title">Node-RED 实时看板</span>
           <span class="nr-spacer"></span>
+          <button class="btn" id="dash-load-btn" type="button" title="按需加载实时看板">▶ 加载实时看板</button>
           <button class="btn" id="dash-fullscreen-btn" type="button" title="全屏显示看板（按 Esc 退出）">⛶ 全屏</button>
           <a class="btn" href="/industrial-gateway/nodered/dashboard/1052-debug" target="_blank" rel="noopener">↗ 新窗口打开</a>
         </div>
+        <div id="dash-placeholder" class="nr-placeholder">
+          <div>
+            <strong>实时看板未加载</strong>
+            默认不自动嵌入 Node-RED Dashboard，避免未部署模板时产生前端错误。需要查看时点击“加载实时看板”。
+          </div>
+        </div>
         <iframe id="dash-iframe"
-                src="/industrial-gateway/nodered/dashboard/1052-debug"
+                data-src="/industrial-gateway/nodered/dashboard/1052-debug"
                 sandbox="allow-same-origin allow-scripts allow-forms allow-modals allow-popups"
                 referrerpolicy="no-referrer"></iframe>
         <div class="nr-help">
@@ -2290,8 +2311,22 @@
     document.getElementById('nr-fullscreen-btn')?.addEventListener('click', () => {
       enterFullscreen('nr-iframe')
     })
+    const loadDashboardIframe = () => {
+      const iframe = document.getElementById('dash-iframe')
+      const placeholder = document.getElementById('dash-placeholder')
+      const button = document.getElementById('dash-load-btn')
+      if (!iframe) return false
+      if (!iframe.src) {
+        iframe.src = iframe.dataset.src || '/industrial-gateway/nodered/dashboard/1052-debug'
+      }
+      iframe.classList.add('loaded')
+      if (placeholder) placeholder.style.display = 'none'
+      if (button) button.textContent = '✓ 实时看板已加载'
+      return true
+    }
+    document.getElementById('dash-load-btn')?.addEventListener('click', loadDashboardIframe)
     document.getElementById('dash-fullscreen-btn')?.addEventListener('click', () => {
-      enterFullscreen('dash-iframe')
+      if (loadDashboardIframe()) enterFullscreen('dash-iframe')
     })
 
     // Esc closes the CSS-overlay fallback; native fullscreen has its own handler.

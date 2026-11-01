@@ -14,6 +14,7 @@ import {
   usesPassivePrefixCaching,
 } from '../agent.cache-policy.service.js'
 import type { AgentTool } from '../agent.tool.types.js'
+import { isDiagnosticMode } from '../agent.diagnostic-policy.js'
 
 function providerHost(baseUrl: string) {
   try {
@@ -57,6 +58,8 @@ export const agentRuntimeTools: AgentTool[] = [
       const settings = await getSettings()
       const chatLlm = resolveLlmConfigForTask(settings.llm, 'agent-chat')
       return {
+        permission: { mode: isDiagnosticMode() ? 'aiaas-diagnostic' : 'general',
+          direct_control_allowed: isDiagnosticMode() ? false : null },
         agent: {
           progressiveDisclosureEnabled: settings.agent.progressiveDisclosureEnabled,
           providerCachingEnabled: settings.agent.providerCachingEnabled,

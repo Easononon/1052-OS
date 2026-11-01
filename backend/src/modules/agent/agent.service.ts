@@ -15,6 +15,8 @@ import {
   formatUapisRuntimeContext,
 } from '../uapis/uapis.service.js'
 import { getAgentSystemPrompt } from './agent.prompt.service.js'
+import { getDiagnosticScope } from './aiaas-diagnostic-scope.js'
+import { isDiagnosticMode } from './agent.diagnostic-policy.js'
 import { formatAgentWorkspaceContext } from './agent.workspace.service.js'
 import {
   executeToolCall,
@@ -199,6 +201,7 @@ function formatSystemEnvironmentContext() {
 }
 
 function formatPermissionBlock(fullAccess: boolean) {
+  if (isDiagnosticMode()) return 'Permission mode: AIAAS diagnostic read-only. fullAccess/confirmed cannot authorize writes. No terminal, arbitrary SQL, PLC writes, alarm changes, or external notifications.'
   return fullAccess
     ? 'Permission mode: full-access enabled. For local writes or risky operations, execute directly and report results.'
     : 'Permission mode: full-access disabled. For local writes or risky operations, explain impact first and wait for explicit confirmation.'
@@ -309,6 +312,10 @@ async function composeLegacyMessages(
   contextMessageLimit: number,
   morningBriefContext: string,
 ): Promise<LLMConversationMessage[]> {
+  if (getDiagnosticScope()) {
+    return [{ role: 'system', content: `${await getAgentSystemPrompt()}\n\n${await formatSkillsRuntimeContext()}` },
+      ...toModelChatMessages(history, 40) as LLMConversationMessage[]]
+  }
   const limitedHistory = safeSliceMessages(history, Math.max(1, contextMessageLimit))
   const latestUserContent = latestUserMessage(limitedHistory)?.content ?? ''
   const callerSystemInstructions = formatSafeCallerSystemInstructions(history)
@@ -319,9 +326,9 @@ async function composeLegacyMessages(
   const [systemPrompt, skillsContext, uapisContext, memoryContext, outputProfileContext] = await Promise.all([
     getAgentSystemPrompt(),
     formatSkillsRuntimeContext(),
-    formatUapisRuntimeContext(),
-    formatMemoryRuntimeContext(latestUserContent),
-    formatOutputProfileRuntimeContext(latestUserContent),
+    isDiagnosticMode() ? Promise.resolve('') : formatUapisRuntimeContext(),
+    isDiagnosticMode() ? Promise.resolve('') : formatMemoryRuntimeContext(latestUserContent),
+    isDiagnosticMode() ? Promise.resolve('') : formatOutputProfileRuntimeContext(latestUserContent),
   ])
 
   const messages: LLMConversationMessage[] = [
@@ -550,15 +557,15 @@ async function maybeBuildExtraSections(
     sections.push(`Workspace root: ${workspaceRoot()}`)
   }
 
-  if (mountedPacks.includes('search-pack')) {
+  if (!isDiagnosticMode() && mountedPacks.includes('search-pack')) {
     sections.push(await formatUapisDirectorySummary())
   }
 
-  if (mountedPacks.includes('memory-pack')) {
+  if (!isDiagnosticMode() && mountedPacks.includes('memory-pack')) {
     sections.push(await formatMemoryRuntimeContext(latestUserContent))
   }
 
-  sections.push(await formatOutputProfileRuntimeContext(latestUserContent))
+  if (!isDiagnosticMode()) sections.push(await formatOutputProfileRuntimeContext(latestUserContent))
 
   // Always inject skill index so the model knows which Skills exist before
   // requesting skill-pack. This fixes the issue where the agent never checks
@@ -642,7 +649,8 @@ async function* runLegacyStream(
   options: AgentRunOptions,
 ): AsyncGenerator<AgentStreamEvent, void, void> {
   const settings = await getSettings()
-  const llm = resolveLlmConfigForTask(settings.llm, 'agent-chat')
+  const scoped = getDiagnosticScope()
+  const llm = scoped?.model ?? resolveLlmConfigForTask(settings.llm, 'agent-chat')
   const latestUserContent = latestUserMessage(history)?.content ?? ''
   const messages = await composeLegacyMessages(
     history,
@@ -659,8 +667,10 @@ async function* runLegacyStream(
   let emptyReplyRetries = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    await scoped?.assertCurrent()
     // ── Wall-clock timeout: graceful finish ────────────────────────
     if (Date.now() - requestStartedAt > MAX_REQUEST_DURATION_MS) {
+      if (scoped) throw new HttpError(504, 'diagnostic_timeout')
       yield { type: 'delta', content: `\n\n---\n⏱ 处理时间已达 ${MAX_REQUEST_DURATION_MS / 60_000} 分钟上限，已暂停。发送"继续"即可接着处理。` }
       yield { type: 'usage', usage: withUserTokens(usage, history) }
       return
@@ -677,6 +687,7 @@ async function* runLegacyStream(
     let llmError: unknown
     for (let attempt = 0; attempt <= MAX_LLM_RETRIES; attempt += 1) {
       try {
+        await scoped?.assertCurrent()
         const stream = chatCompletionStream(llm, messages, tools, {
           abortSignal: options.abortSignal,
           providerCachingEnabled: settings.agent.providerCachingEnabled,
@@ -695,7 +706,7 @@ async function* runLegacyStream(
         break
       } catch (error) {
         llmError = error
-        if (attempt < MAX_LLM_RETRIES && isTransientLlmError(error)) {
+        if (!scoped && attempt < MAX_LLM_RETRIES && isTransientLlmError(error)) {
           console.warn(`[agent] LLM transient error (attempt ${attempt + 1}/${MAX_LLM_RETRIES + 1}), retrying: ${(error as Error).message}`)
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
           continue
@@ -704,6 +715,7 @@ async function* runLegacyStream(
       }
     }
     if (!response) {
+      if (scoped) throw new HttpError(502, 'diagnostic_model_failed')
       // Surface a graceful chat message instead of throwing — the user gets
       // a clear explanation, and the previously streamed deltas (if any) stay
       // intact instead of being replaced by a red error toast.
@@ -717,11 +729,17 @@ async function* runLegacyStream(
       return
     }
 
+    if (scoped && !(response.toolCalls.length > 0
+      ? ['tool_calls', 'function_call', 'stop', 'STOP', 'end_turn', 'tool_use'].includes(response.finishReason ?? '')
+      : ['stop', 'STOP', 'end_turn'].includes(response.finishReason ?? ''))) {
+      throw new HttpError(502, 'diagnostic_model_incomplete')
+    }
     usage = addUsage(usage, response.usage)
     messages.push(toAssistantHistoryMessage(response))
 
     // ── Empty-reply recovery: model produced only <think> blocks ────
     if (isEmptyReply(response) && emptyReplyRetries < MAX_EMPTY_REPLY_RETRIES) {
+      if (scoped) throw new HttpError(502, 'diagnostic_empty_reply')
       emptyReplyRetries += 1
       console.warn(`[agent] empty reply (think-only) — nudging model (attempt ${emptyReplyRetries}/${MAX_EMPTY_REPLY_RETRIES})`)
       messages.push(EMPTY_REPLY_NUDGE_MESSAGE)
@@ -738,7 +756,7 @@ async function* runLegacyStream(
       if (isEmptyReply(response)) {
         yield { type: 'delta', content: '\n\n---\n⚠ 模型只输出了思考内容但没有给出实际答复或工具调用。可以重新发送问题，或换一个更明确的指令。' }
       }
-      await maybeCreateInferredMemorySuggestion({
+      if (!scoped) await maybeCreateInferredMemorySuggestion({
         latestUserContent,
         usedToolNames,
       }).catch(() => null)
@@ -755,6 +773,7 @@ async function* runLegacyStream(
   }
 
   // Graceful finish instead of error when round limit reached
+  if (scoped) throw new HttpError(504, 'diagnostic_round_limit')
   yield { type: 'delta', content: '\n\n---\n⚠ 工具调用轮次已达上限，已暂停。发送"继续"可接着处理。' }
   yield { type: 'usage', usage: withUserTokens(usage, history) }
 }
@@ -765,13 +784,15 @@ async function* runProgressiveStream(
 ): AsyncGenerator<AgentStreamEvent, void, void> {
   const settings = await getSettings()
   const llm = resolveLlmConfigForTask(settings.llm, 'agent-chat')
-  const sessionId = deriveSessionId(options.runtimeContext)
+  const sessionId = isDiagnosticMode() ? `aiaas-diagnostic:${deriveSessionId(options.runtimeContext)}` : deriveSessionId(options.runtimeContext)
   const storedMessages: StoredChatMessage[] | undefined =
-    options.runtimeContext?.source ? undefined : (await getChatHistory()).messages
+    isDiagnosticMode() || options.runtimeContext?.source ? undefined : (await getChatHistory()).messages
   const latestUserContent = latestUserMessage(history)?.content ?? ''
   const callerSystemInstructions = formatSafeCallerSystemInstructions(history)
   const usedToolNames = new Set<string>()
-  let checkpoint = await ensureCheckpointSeedForSession(sessionId, history, storedMessages)
+  let checkpoint = isDiagnosticMode()
+    ? await getCheckpoint(sessionId)
+    : await ensureCheckpointSeedForSession(sessionId, history, storedMessages)
   let conversation = normalizeHistoryForProgressive(
     history,
     Math.max(1, settings.agent.contextMessageLimit),
@@ -783,7 +804,7 @@ async function* runProgressiveStream(
     })
   }
 
-  let mountedPacks = checkpoint.mountedPacks
+  let mountedPacks: AgentPackName[] = isDiagnosticMode() ? ['data-pack', 'skill-pack'] : checkpoint.mountedPacks
   let usage: TokenUsage = {}
   let upgradeCount = 0
   let emptyReplyRetries = 0
@@ -1165,6 +1186,7 @@ export async function* sendMessageStream(
   options: AgentRunOptions = {},
 ): AsyncGenerator<AgentStreamEvent, void, void> {
   const settings = await getSettings()
+  if (getDiagnosticScope()) { yield* runLegacyStream(history, options); return }
   if (settings.agent.progressiveDisclosureEnabled) {
     yield* runProgressiveStream(history, options)
     return

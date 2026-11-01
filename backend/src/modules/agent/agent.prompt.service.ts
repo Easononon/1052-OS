@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isDiagnosticMode } from './agent.diagnostic-policy.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SYSTEM_PROMPT_FILE = path.resolve(
@@ -385,6 +386,7 @@ const FALLBACK_SYSTEM_PROMPT = `
 const CACHE_TTL_MS = 60_000
 let cachedSystemPrompt: string | null = null
 let cacheTimestamp = 0
+let cachedFile = ''
 
 function normalizePromptText(text: string): string {
   return text.replace(/\r\n/g, '\n').trim()
@@ -392,7 +394,7 @@ function normalizePromptText(text: string): string {
 
 async function readPromptFile(file: string, fallback: string): Promise<string> {
   const now = Date.now()
-  if (cachedSystemPrompt !== null && now - cacheTimestamp < CACHE_TTL_MS) {
+  if (cachedFile === file && cachedSystemPrompt !== null && now - cacheTimestamp < CACHE_TTL_MS) {
     return cachedSystemPrompt
   }
 
@@ -403,10 +405,15 @@ async function readPromptFile(file: string, fallback: string): Promise<string> {
     cachedSystemPrompt = fallback
   }
   cacheTimestamp = now
+  cachedFile = file
 
   return cachedSystemPrompt
 }
 
 export async function getAgentSystemPrompt(): Promise<string> {
+  if (isDiagnosticMode()) {
+    return readPromptFile(path.join(path.dirname(SYSTEM_PROMPT_FILE), 'aiaas-diagnostic-agent.md'),
+      'AIAAS 只读诊断。仅使用批准的只读工具。禁止终端、任意 SQL、写 PLC、修改控制或报警。数据不足必须明确说明，不能虚构。')
+  }
   return readPromptFile(SYSTEM_PROMPT_FILE, FALLBACK_SYSTEM_PROMPT)
 }

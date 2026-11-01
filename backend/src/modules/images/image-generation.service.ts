@@ -140,6 +140,29 @@ async function fetchRemoteImage(url: string) {
   }
 }
 
+function isLoopbackHost(hostname: string) {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+}
+
+function normalizeProviderImageUrl(imageUrl: string, providerBaseUrl: string) {
+  try {
+    const parsedImageUrl = new URL(imageUrl)
+    const parsedProviderUrl = new URL(providerBaseUrl)
+    if (
+      isLoopbackHost(parsedImageUrl.hostname) &&
+      isLoopbackHost(parsedProviderUrl.hostname) &&
+      parsedImageUrl.origin !== parsedProviderUrl.origin
+    ) {
+      parsedImageUrl.protocol = parsedProviderUrl.protocol
+      parsedImageUrl.host = parsedProviderUrl.host
+      return parsedImageUrl.toString()
+    }
+  } catch {
+    // Keep provider URLs unchanged if either side is not a valid absolute URL.
+  }
+  return imageUrl
+}
+
 async function persistImage(
   bytes: Buffer,
   format: GeneratedImage['format'],
@@ -356,7 +379,9 @@ async function generateOpenAICompatibleImages(
     }
 
     if (typeof item?.url === 'string' && item.url.trim()) {
-      const remote = await fetchRemoteImage(item.url.trim())
+      const remote = await fetchRemoteImage(
+        normalizeProviderImageUrl(item.url.trim(), configured.baseUrl),
+      )
       images.push(
         await persistImage(
           remote.bytes,

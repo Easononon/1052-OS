@@ -1,5 +1,6 @@
 import { HttpError } from '../../../http-error.js'
 import type { AgentTool } from '../agent.tool.types.js'
+import { getDiagnosticScope, SCOPED_DIAGNOSTIC_SKILLS } from '../aiaas-diagnostic-scope.js'
 import {
   createSkill,
   deleteSkill,
@@ -30,7 +31,7 @@ export const skillsTools: AgentTool[] = [
       properties: {},
       additionalProperties: false,
     },
-    execute: async () => listSkills(),
+    execute: async () => (await listSkills()).filter(s => !getDiagnosticScope() || SCOPED_DIAGNOSTIC_SKILLS.has(s.id)),
   },
   {
     name: 'skills_read',
@@ -44,7 +45,13 @@ export const skillsTools: AgentTool[] = [
       required: ['id'],
       additionalProperties: false,
     },
-    execute: async (args) => readSkill((args as Record<string, unknown> | null)?.id),
+    execute: async (args) => {
+      const id = (args as Record<string, unknown> | null)?.id
+      if (getDiagnosticScope() && (typeof id !== 'string' || !SCOPED_DIAGNOSTIC_SKILLS.has(id))) {
+        throw new HttpError(403, 'skill_not_approved')
+      }
+      return readSkill(id)
+    },
   },
   {
     name: 'skills_create',

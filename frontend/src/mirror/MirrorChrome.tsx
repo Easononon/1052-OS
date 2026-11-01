@@ -8,40 +8,21 @@ import { CouplingController, CouplingContext } from './cardCoupling'
 // liquidPour.ts + LiquidPourOverlay.tsx kept on disk for Phase 2 reference.
 
 // Lazy mirror pages — PR2/PR3 fill the stubs.
-const MirrorChat = lazy(() =>
-  import('./MirrorChat').then((m) => ({ default: m.MirrorChat })),
-)
-// MirrorSettings showcase file retained for Phase 2 reference (LLM + Token
-// panels in mirror-styled rendering) — currently /settings falls back to
-// classic Settings wrapped in MirrorPageWrapper so all sections are
-// preserved. The showcase will be re-routed when all sections are mirror-
-// native.
-
-// Lazy classic pages — wrapped in MirrorPageWrapper so the mirror page
-// chrome (title + scroll region) renders before the classic body. PR2/
-// PR3 replace these one at a time with native mirror equivalents.
-const Calendar = lazy(() => import('../pages/Calendar'))
-const Notifications = lazy(() => import('../pages/Notifications'))
-const Repository = lazy(() => import('../pages/Repository'))
-const Notes = lazy(() => import('../pages/Notes'))
-const Wiki = lazy(() => import('../pages/Wiki'))
-const Pkm = lazy(() => import('../pages/Pkm'))
-const OutputProfiles = lazy(() => import('../pages/OutputProfiles'))
-const Resources = lazy(() => import('../pages/Resources'))
-const Memory = lazy(() => import('../pages/Memory'))
-const SocialChannels = lazy(() => import('../pages/SocialChannels'))
-const Toolbox = lazy(() => import('../pages/Toolbox'))
-const SqlWorkbench = lazy(() => import('../pages/SqlWorkbench'))
-const SqlDataSources = lazy(() => import('../pages/SqlDataSources'))
-const SqlFiles = lazy(() => import('../pages/SqlFiles'))
-const SqlVariables = lazy(() => import('../pages/SqlVariables'))
-const SqlOrchestration = lazy(() => import('../pages/SqlOrchestration'))
-const SqlLoads = lazy(() => import('../pages/SqlLoads'))
-const SqlServers = lazy(() => import('../pages/SqlServers'))
-const SqlShellFiles = lazy(() => import('../pages/SqlShellFiles'))
-const SearchSources = lazy(() => import('../pages/SearchSources'))
-const Skills = lazy(() => import('../pages/Skills'))
-const Settings = lazy(() => import('../pages/Settings'))
+// Chat is the classic page (full command menu, source badges, /new, /compact,
+// empty-state prompts, notification focus). The mirror-styled MirrorChat
+// variant is kept on disk for Phase 2 reference but is not routed — users
+// reported the mirror variant felt like a regression vs. the classic UI.
+// Voice input (useVoiceIO + mode:'recorder' fallback) and TTS playback are
+// already wired into the classic Chat page, so rolling the route back keeps
+// all the recent voice work.
+const Chat = lazy(() => import('../pages/Chat'))
+const TodayPage = lazy(() => import('../pages/TodayPage'))
+const CapabilitiesPage = lazy(() => import('../pages/CapabilitiesPage'))
+const WorkspacePage = lazy(() => import('../pages/WorkspacePage'))
+const KnowledgePage = lazy(() => import('../pages/KnowledgePage'))
+const AutomationsPage = lazy(() => import('../pages/AutomationsPage'))
+const SettingsPage = lazy(() => import('../pages/SettingsPage'))
+const IndustrialGateway = lazy(() => import('../pages/IndustrialGateway'))
 
 function Wrap(title: string, child: ReactNode) {
   return (
@@ -50,6 +31,34 @@ function Wrap(title: string, child: ReactNode) {
     </MirrorPageWrapper>
   )
 }
+
+const legacyRoutes: Array<[string, string]> = [
+  ['/calendar', '/automations/calendar'],
+  ['/repository', '/workspace/repositories'],
+  ['/repository/:id', '/workspace/repositories'],
+  ['/notes', '/knowledge/notes'],
+  ['/wiki', '/knowledge/wiki'],
+  ['/pkm', '/knowledge/search'],
+  ['/output-profiles', '/knowledge/output-profiles'],
+  ['/resources', '/knowledge/resources'],
+  ['/memory', '/knowledge/memory'],
+  ['/social-channels', '/capabilities/channels'],
+  ['/social-channels/:channel', '/capabilities/channels'],
+  ['/toolbox', '/capabilities/tools'],
+  ['/toolbox/:provider', '/capabilities/tools'],
+  ['/sql', '/workspace/sql'],
+  ['/sql/datasources', '/workspace/datasources'],
+  ['/sql/files', '/workspace/sql-files'],
+  ['/sql/variables', '/workspace/variables'],
+  ['/sql/orchestration', '/automations/orchestrations'],
+  ['/sql/loads', '/automations/runs'],
+  ['/sql/servers', '/workspace/servers'],
+  ['/sql/shell-files', '/workspace/shell-files'],
+  ['/notifications', '/today/activity'],
+  ['/search-sources', '/capabilities/search'],
+  ['/skills', '/capabilities/skills'],
+  ['/settings', '/settings/models'],
+]
 
 export function MirrorChrome() {
   // Lazy-init once so the controller identity stays stable across renders.
@@ -164,73 +173,19 @@ export function MirrorChrome() {
       <MirrorSidebar />
       <Suspense fallback={<div className="mr-page-loading" />}>
         <Routes>
-          <Route path="/" element={<Navigate to="/chat" replace />} />
-          <Route path="/chat" element={<MirrorChat />} />
-          <Route path="/settings" element={Wrap('设置', <Settings />)} />
+          <Route path="/" element={<Navigate to="/today" replace />} />
+          <Route path="/today/*" element={<TodayPage />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/settings/*" element={<SettingsPage />} />
 
-          <Route path="/calendar" element={Wrap('日历', <Calendar />)} />
-          <Route
-            path="/notifications"
-            element={Wrap('通知中心', <Notifications />)}
-          />
-          <Route path="/repository" element={Wrap('仓库', <Repository />)} />
-          <Route path="/repository/:id" element={Wrap('仓库', <Repository />)} />
-          <Route path="/notes" element={Wrap('笔记', <Notes />)} />
-          <Route path="/wiki" element={Wrap('Wiki', <Wiki />)} />
-          <Route path="/pkm" element={Wrap('PKM', <Pkm />)} />
-          <Route
-            path="/output-profiles"
-            element={Wrap('输出配方', <OutputProfiles />)}
-          />
-          <Route path="/resources" element={Wrap('资源列表', <Resources />)} />
-          <Route path="/memory" element={Wrap('记忆中心', <Memory />)} />
-          <Route
-            path="/social-channels"
-            element={Wrap('社交通道', <SocialChannels />)}
-          />
-          <Route
-            path="/social-channels/:channel"
-            element={Wrap('社交通道', <SocialChannels />)}
-          />
-          <Route path="/toolbox" element={Wrap('工具箱', <Toolbox />)} />
-          <Route
-            path="/toolbox/:provider"
-            element={Wrap('工具箱', <Toolbox />)}
-          />
-          <Route path="/sql" element={Wrap('SQL 工作台', <SqlWorkbench />)} />
-          <Route
-            path="/sql/datasources"
-            element={Wrap('SQL 工作台', <SqlDataSources />)}
-          />
-          <Route
-            path="/sql/files"
-            element={Wrap('SQL 工作台', <SqlFiles />)}
-          />
-          <Route
-            path="/sql/variables"
-            element={Wrap('SQL 工作台', <SqlVariables />)}
-          />
-          <Route
-            path="/sql/orchestration"
-            element={Wrap('SQL 工作台', <SqlOrchestration />)}
-          />
-          <Route
-            path="/sql/loads"
-            element={Wrap('SQL 工作台', <SqlLoads />)}
-          />
-          <Route
-            path="/sql/servers"
-            element={Wrap('SQL 工作台', <SqlServers />)}
-          />
-          <Route
-            path="/sql/shell-files"
-            element={Wrap('SQL 工作台', <SqlShellFiles />)}
-          />
-          <Route
-            path="/search-sources"
-            element={Wrap('搜索源', <SearchSources />)}
-          />
-          <Route path="/skills" element={Wrap('Skill 中心', <Skills />)} />
+          <Route path="/automations/*" element={<AutomationsPage />} />
+          <Route path="/workspace/*" element={<WorkspacePage />} />
+          <Route path="/knowledge/*" element={<KnowledgePage />} />
+          <Route path="/capabilities/*" element={<CapabilitiesPage />} />
+          <Route path="/industrial-gateway" element={Wrap('工业网关', <IndustrialGateway />)} />
+          {legacyRoutes.map(([path, target]) => (
+            <Route key={path} path={path} element={<Navigate to={target} replace />} />
+          ))}
         </Routes>
       </Suspense>
     </div>

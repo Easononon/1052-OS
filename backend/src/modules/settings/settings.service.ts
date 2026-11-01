@@ -8,6 +8,7 @@ import {
 } from '../calendar/calendar.schedule.service.js'
 import type {
   AgentSettings,
+  AgentPermissionProfile,
   AppearanceEffects,
   AppearanceSettings,
   AppearanceWaterEffectIntensity,
@@ -64,6 +65,7 @@ const DEFAULT_SETTINGS: Settings = {
   agent: {
     streaming: true,
     userPrompt: '',
+    permissionProfile: 'default',
     fullAccess: false,
     contextMessageLimit: 50,
     progressiveDisclosureEnabled: true,
@@ -124,6 +126,12 @@ const VALID_LLM_TASKS = new Set<LLMTaskKind>([
   'coding',
   'summarization',
   'vision',
+])
+
+const VALID_AGENT_PERMISSION_PROFILES = new Set<AgentPermissionProfile>([
+  'read-only',
+  'default',
+  'danger-full-access',
 ])
 
 function hashId(prefix: string, parts: string[]) {
@@ -524,6 +532,15 @@ async function syncMorningBriefScheduledTask(settings: MorningBriefSettings) {
 
 function normalizeAgentSettings(agent: LegacyAgentSettings | undefined): AgentSettings {
   if (!agent) return DEFAULT_SETTINGS.agent
+  const rawPermissionProfile = (agent as { permissionProfile?: unknown }).permissionProfile
+  const permissionProfile = VALID_AGENT_PERMISSION_PROFILES.has(
+    rawPermissionProfile as AgentPermissionProfile,
+  )
+    ? (rawPermissionProfile as AgentPermissionProfile)
+    : typeof (agent as { fullAccess?: unknown }).fullAccess === 'boolean' &&
+        Boolean((agent as { fullAccess?: unknown }).fullAccess)
+      ? 'danger-full-access'
+      : DEFAULT_SETTINGS.agent.permissionProfile
 
   return {
     streaming:
@@ -536,8 +553,13 @@ function normalizeAgentSettings(agent: LegacyAgentSettings | undefined): AgentSe
         : typeof agent.systemPrompt === 'string'
           ? agent.systemPrompt
           : DEFAULT_SETTINGS.agent.userPrompt,
+    permissionProfile,
     fullAccess:
-      typeof (agent as { fullAccess?: unknown }).fullAccess === 'boolean'
+      permissionProfile === 'danger-full-access'
+        ? true
+        : permissionProfile === 'read-only' || permissionProfile === 'default'
+          ? false
+          : typeof (agent as { fullAccess?: unknown }).fullAccess === 'boolean'
         ? Boolean((agent as { fullAccess?: unknown }).fullAccess)
         : DEFAULT_SETTINGS.agent.fullAccess,
     contextMessageLimit:

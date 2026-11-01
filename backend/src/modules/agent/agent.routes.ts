@@ -19,6 +19,9 @@ import type {
   StoredChatMessage,
   TokenUsage,
 } from './agent.types.js'
+import { isDiagnosticMode } from './agent.diagnostic-policy.js'
+import { aiaasDatabaseTools } from './tools/aiaas-database.tools.js'
+import { getAgentToolDefinitions } from './agent.tool.service.js'
 
 function trailingTagPrefixLength(value: string, tag: string) {
   const lowerValue = value.toLowerCase()
@@ -74,6 +77,19 @@ function createThinkStreamFilter() {
 }
 
 export const agentRouter: Router = Router()
+agentRouter.get('/diagnostics/policy', (_req, res) => {
+  const diagnostic = isDiagnosticMode()
+  res.json({ mode: diagnostic ? 'diagnostic' : 'general', direct_control_allowed: diagnostic ? false : null,
+    toolNames: getAgentToolDefinitions().map(t => t.function.name),
+    notice: 'Process-level diagnostic boundary; not an OS sandbox or production authentication.' })
+})
+agentRouter.get('/diagnostics/sources', async (_req, res, next) => {
+  try { res.json(await aiaasDatabaseTools[0].execute({})) } catch (error) { next(error) }
+})
+agentRouter.post('/diagnostics/analyze', async (req, res, next) => {
+  try { res.json({ ok: true, data: await aiaasDatabaseTools[1].execute(req.body) }) }
+  catch (error) { next(error) }
+})
 const agentUpload = multer({
   storage: multer.memoryStorage(),
   limits: {

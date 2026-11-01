@@ -129,6 +129,8 @@ const PACK_TOOL_NAMES: Record<Exclude<AgentPackName, 'base-read-pack'>, readonly
     'industrial_update_collector_task',
     'industrial_scan_modbus_registers',
     'aiaas_get_state',
+    'aiaas_database_sources',
+    'aiaas_database_analyze',
     'aiaas_get_alarms',
     'aiaas_get_prediction_analysis',
     'aiaas_explain_alarm',

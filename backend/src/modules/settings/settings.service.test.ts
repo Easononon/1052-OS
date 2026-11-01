@@ -17,6 +17,26 @@ afterEach(async () => {
 })
 
 describe('settings llm profiles', () => {
+  it('exposes and persists the Agent permission profile for the new settings UI', async () => {
+    const service = await import('./settings.service.js')
+
+    const defaults = await service.getPublicSettings()
+    expect(defaults.agent.permissionProfile).toBe('default')
+    expect(defaults.agent.fullAccess).toBe(false)
+
+    const dangerous = await service.updateSettings({
+      agent: { permissionProfile: 'danger-full-access' },
+    })
+    expect(dangerous.agent.permissionProfile).toBe('danger-full-access')
+    expect(dangerous.agent.fullAccess).toBe(true)
+
+    const readOnly = await service.updateSettings({
+      agent: { permissionProfile: 'read-only' },
+    })
+    expect(readOnly.agent.permissionProfile).toBe('read-only')
+    expect(readOnly.agent.fullAccess).toBe(false)
+  })
+
   it('defaults and normalizes morning brief settings', async () => {
     const service = await import('./settings.service.js')
     const calendar = await import('../calendar/calendar.schedule.service.js')

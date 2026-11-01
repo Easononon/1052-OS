@@ -1,46 +1,67 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import OnboardingModal from './components/OnboardingModal'
-import Sidebar from './components/Sidebar'
+import { AppShell } from './components/shell/AppShell'
 import ThemeEffectLayer from './components/ThemeEffectLayer'
 import { MirrorChrome } from './mirror/MirrorChrome'
 import { useTheme } from './theme-context'
 import Chat from './pages/Chat'
-import Calendar from './pages/Calendar'
-import Repository from './pages/Repository'
-import Notes from './pages/Notes'
-import Wiki from './pages/Wiki'
-import Pkm from './pages/Pkm'
-import OutputProfiles from './pages/OutputProfiles'
-import Resources from './pages/Resources'
-import SearchSources from './pages/SearchSources'
-import Skills from './pages/Skills'
-import Settings from './pages/Settings'
-import Notifications from './pages/Notifications'
-import Memory from './pages/Memory'
-import SocialChannels from './pages/SocialChannels'
-import SqlWorkbench from './pages/SqlWorkbench'
-import Toolbox from './pages/Toolbox'
-import SqlDataSources from './pages/SqlDataSources'
-import SqlFiles from './pages/SqlFiles'
-import SqlVariables from './pages/SqlVariables'
-import SqlOrchestration from './pages/SqlOrchestration'
-import SqlLoads from './pages/SqlLoads'
-import SqlServers from './pages/SqlServers'
-import SqlShellFiles from './pages/SqlShellFiles'
 import IndustrialGateway from './pages/IndustrialGateway'
+import TodayPage from './pages/TodayPage'
+import CapabilitiesPage from './pages/CapabilitiesPage'
+import WorkspacePage from './pages/WorkspacePage'
+import KnowledgePage from './pages/KnowledgePage'
+import AutomationsPage from './pages/AutomationsPage'
+import SettingsPage from './pages/SettingsPage'
+import { readShellMode, SHELL_MODE_EVENT, type ShellMode } from './shell-mode'
 import { useOnboarding } from './use-onboarding'
+import { useEffect, useState } from 'react'
+
+const legacyRoutes: Array<[string, string]> = [
+  ['/calendar', '/automations/calendar'],
+  ['/repository', '/workspace/repositories'],
+  ['/repository/:id', '/workspace/repositories'],
+  ['/notes', '/knowledge/notes'],
+  ['/wiki', '/knowledge/wiki'],
+  ['/pkm', '/knowledge/search'],
+  ['/output-profiles', '/knowledge/output-profiles'],
+  ['/resources', '/knowledge/resources'],
+  ['/memory', '/knowledge/memory'],
+  ['/social-channels', '/capabilities/channels'],
+  ['/social-channels/:channel', '/capabilities/channels'],
+  ['/toolbox', '/capabilities/tools'],
+  ['/toolbox/:provider', '/capabilities/tools'],
+  ['/sql', '/workspace/sql'],
+  ['/sql/datasources', '/workspace/datasources'],
+  ['/sql/files', '/workspace/sql-files'],
+  ['/sql/variables', '/workspace/variables'],
+  ['/sql/orchestration', '/automations/orchestrations'],
+  ['/sql/loads', '/automations/runs'],
+  ['/sql/servers', '/workspace/servers'],
+  ['/sql/shell-files', '/workspace/shell-files'],
+  ['/notifications', '/today/activity'],
+  ['/search-sources', '/capabilities/search'],
+  ['/skills', '/capabilities/skills'],
+  ['/settings', '/settings/models'],
+]
 
 export default function App() {
   const onboarding = useOnboarding()
-  const { baseProfile } = useTheme()
+  useTheme()
+  const [shellMode, setShellMode] = useState<ShellMode>(() => readShellMode())
 
-  // Codex review #3 — abstract the shell decision so the App.tsx route branch
-  // is open to future shells without poking at every `baseProfile === 'mirror'`
-  // call site. Only 'mirror' uses MirrorChrome (with cursor tracking, cross-
-  // card coupling, liquid pour). 'silky' shares the mirror material skin via
-  // mirror-theme.css but renders through the classic shell, so it falls
-  // through to the classic branch below alongside 'classic' and 'gpt'.
-  const usesMirrorShell = baseProfile === 'mirror'
+  useEffect(() => {
+    const sync = () => setShellMode(readShellMode())
+    window.addEventListener('storage', sync)
+    window.addEventListener(SHELL_MODE_EVENT, sync)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener(SHELL_MODE_EVENT, sync)
+    }
+  }, [])
+
+  // Keep the previous Mirror shell available as an explicit fallback, but make
+  // the 10052-style AppShell the default so the upgraded workspace is visible.
+  const usesMirrorShell = shellMode === 'legacy'
 
   if (usesMirrorShell) {
     return (
@@ -53,42 +74,25 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <>
       <ThemeEffectLayer />
-      <Sidebar />
-      <main className="main">
-        <Routes>
-          <Route path="/" element={<Navigate to="/chat" replace />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/repository" element={<Repository />} />
-          <Route path="/repository/:id" element={<Repository />} />
-          <Route path="/notes" element={<Notes />} />
-          <Route path="/wiki" element={<Wiki />} />
-          <Route path="/pkm" element={<Pkm />} />
-          <Route path="/output-profiles" element={<OutputProfiles />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/memory" element={<Memory />} />
-          <Route path="/social-channels" element={<SocialChannels />} />
-          <Route path="/social-channels/:channel" element={<SocialChannels />} />
-          <Route path="/toolbox" element={<Toolbox />} />
-          <Route path="/toolbox/:provider" element={<Toolbox />} />
-          <Route path="/sql" element={<SqlWorkbench />} />
-          <Route path="/sql/datasources" element={<SqlDataSources />} />
-          <Route path="/sql/files" element={<SqlFiles />} />
-          <Route path="/sql/variables" element={<SqlVariables />} />
-          <Route path="/sql/orchestration" element={<SqlOrchestration />} />
-          <Route path="/sql/loads" element={<SqlLoads />} />
-          <Route path="/sql/servers" element={<SqlServers />} />
-          <Route path="/sql/shell-files" element={<SqlShellFiles />} />
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route path="/" element={<Navigate to="/today" replace />} />
+          <Route path="/today/*" element={<TodayPage />} />
+          <Route path="/chat/*" element={<Chat />} />
+          <Route path="/automations/*" element={<AutomationsPage />} />
+          <Route path="/workspace/*" element={<WorkspacePage />} />
+          <Route path="/knowledge/*" element={<KnowledgePage />} />
+          <Route path="/capabilities/*" element={<CapabilitiesPage />} />
           <Route path="/industrial-gateway" element={<IndustrialGateway />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/search-sources" element={<SearchSources />} />
-          <Route path="/skills" element={<Skills />} />
-          <Route path="/settings" element={<Settings onRestartOnboarding={onboarding.restart} />} />
-        </Routes>
-      </main>
+          <Route path="/settings/*" element={<SettingsPage />} />
+          {legacyRoutes.map(([path, target]) => (
+            <Route key={path} path={path} element={<Navigate to={target} replace />} />
+          ))}
+        </Route>
+      </Routes>
       <OnboardingModal open={onboarding.shouldShow} onClose={onboarding.markCompleted} />
-    </div>
+    </>
   )
 }

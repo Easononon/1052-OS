@@ -267,10 +267,16 @@ const taskToForm = (task: ScheduledTask): TaskForm => {
   }
 }
 
-export default function Calendar() {
+type CalendarTab = 'events' | 'tasks'
+
+type CalendarProps = {
+  initialTab?: CalendarTab
+}
+
+export default function Calendar({ initialTab = 'events' }: CalendarProps = {}) {
   const today = new Date()
   const todayKey = dateKey(today)
-  const [tab, setTab] = useState<'events' | 'tasks'>('events')
+  const [tab, setTab] = useState<CalendarTab>(initialTab)
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -364,6 +370,10 @@ export default function Calendar() {
     void loadTasks()
     void loadDeliveryTargets()
   }, [])
+
+  useEffect(() => {
+    setTab(initialTab)
+  }, [initialTab])
 
   useEffect(() => clearNoticeTimers, [])
 

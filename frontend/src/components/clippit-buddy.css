@@ -1,0 +1,134 @@
+.clippit-buddy {
+  --clippit-size: 62px;
+  position: relative;
+  display: grid;
+  width: var(--clippit-size);
+  min-width: var(--clippit-size);
+  height: calc(var(--clippit-size) + 10px);
+  place-items: center;
+  isolation: isolate;
+}
+
+.clippit-buddy.compact {
+  --clippit-size: 48px;
+}
+
+.clippit-body {
+  position: relative;
+  width: calc(var(--clippit-size) * 0.56);
+  height: var(--clippit-size);
+  transform-origin: 50% 76%;
+  animation: clippit-turn 4.6s ease-in-out infinite;
+}
+
+.clippit-loop {
+  position: absolute;
+  border: 4px solid #d8e1e8;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.22),
+    0 8px 18px rgba(0,0,0,.22);
+}
+
+.clippit-loop.outer {
+  inset: 2px 4px 3px 4px;
+}
+
+.clippit-loop.inner {
+  inset: 11px 12px 13px 12px;
+  border-width: 3px;
+  border-color: #aebbc5;
+}
+
+.clippit-face {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  display: block;
+  width: calc(var(--clippit-size) * 0.54);
+  height: calc(var(--clippit-size) * 0.28);
+  transform: translateX(-50%) rotate(-4deg);
+}
+
+.clippit-eye {
+  position: absolute;
+  top: 2px;
+  width: 5px;
+  height: 7px;
+  border-radius: 50%;
+  background: #111820;
+  animation: clippit-blink 5.4s infinite;
+}
+
+.clippit-eye.left { left: 8px; }
+.clippit-eye.right { right: 8px; }
+
+.clippit-smile {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 18px;
+  height: 9px;
+  border-bottom: 2px solid #111820;
+  border-radius: 0 0 18px 18px;
+  transform: translateX(-50%);
+}
+
+.clippit-bubble {
+  position: absolute;
+  top: 1px;
+  right: -4px;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--accent, #45d6c8) 42%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated, #10171b) 88%, transparent);
+  color: var(--accent, #45d6c8);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0;
+  transform-origin: 0 100%;
+  animation: clippit-bubble 4.6s ease-in-out infinite;
+}
+
+.clippit-shadow {
+  position: absolute;
+  bottom: 3px;
+  width: calc(var(--clippit-size) * 0.6);
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.28);
+  filter: blur(4px);
+  animation: clippit-shadow 4.6s ease-in-out infinite;
+}
+
+@keyframes clippit-turn {
+  0%, 100% { transform: rotate(-7deg) translateY(0) scaleX(1); }
+  25% { transform: rotate(8deg) translateY(-2px) scaleX(.93); }
+  50% { transform: rotate(0deg) translateY(-5px) scaleX(1.04); }
+  75% { transform: rotate(-10deg) translateY(-2px) scaleX(.96); }
+}
+
+@keyframes clippit-blink {
+  0%, 45%, 50%, 100% { transform: scaleY(1); }
+  47% { transform: scaleY(.12); }
+}
+
+@keyframes clippit-bubble {
+  0%, 100% { opacity: .62; transform: rotate(-8deg) translateY(0); }
+  45% { opacity: 1; transform: rotate(7deg) translateY(-4px); }
+}
+
+@keyframes clippit-shadow {
+  0%, 100% { opacity: .46; transform: scaleX(.85); }
+  50% { opacity: .26; transform: scaleX(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clippit-body,
+  .clippit-eye,
+  .clippit-bubble,
+  .clippit-shadow {
+    animation: none;
+  }
+}

@@ -30,6 +30,7 @@ __pycache__/
 **/__pycache__/
 *.py[cod]
 *.bak
+*.bak-*
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/

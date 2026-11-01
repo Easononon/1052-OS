@@ -69,7 +69,7 @@ export function MirrorComposer({ model }: MirrorComposerProps) {
         textareaRef.current?.focus()
       },
       onAutoSend: (text) => void send(text),
-    })
+    }, { mode: 'recorder' })
   }, [send, setInput, voice])
 
   const onSubmit = useCallback(() => {

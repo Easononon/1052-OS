@@ -9,6 +9,7 @@ import { initMemoryStorage } from './modules/memory/memory.service.js'
 import { ensureBundledSkillsInstalled } from './modules/skills/skills.service.js'
 import { initUpdaterState } from './modules/updates/updates.service.js'
 import { installBackendRuntimeLogging } from './runtime-logs.js'
+import { isDiagnosticMode } from './modules/agent/agent.diagnostic-policy.js'
 
 installBackendRuntimeLogging()
 const app = createApp()
@@ -20,7 +21,8 @@ async function bootstrap() {
   const agentWorkspace = await ensureAgentWorkspace()
   const bundledSkills = await ensureBundledSkillsInstalled()
 
-  app.listen(config.port, () => {
+  const diagnostic = isDiagnosticMode()
+  app.listen(config.port, diagnostic ? '127.0.0.1' : (process.env.HOST || '0.0.0.0'), () => {
     console.log(`[agent-backend] listening on http://localhost:${config.port}`)
     console.log(`[agent-backend] data dir: ${config.dataDir}`)
     console.log(`[agent-backend] agent workspace: ${agentWorkspace}`)
@@ -35,9 +37,13 @@ async function bootstrap() {
         `[agent-backend] bundled skill updates available: ${bundledSkills.updatesAvailable.join(', ')}`,
       )
     }
-    startScheduledTaskRunner()
-    void startAllEnabledWechatAccounts()
-    void startAllEnabledFeishuChannels()
+    if (diagnostic) {
+      console.log('[agent-backend] AIAAS diagnostic read-only; schedules and channel auto-start disabled')
+    } else {
+      startScheduledTaskRunner()
+      void startAllEnabledWechatAccounts()
+      void startAllEnabledFeishuChannels()
+    }
   })
 }
 

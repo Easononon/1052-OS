@@ -540,7 +540,7 @@ export default function Chat() {
         })
       },
       onAutoSend: (text) => void send(text),
-    })
+    }, { mode: 'recorder' })
   }
 
   const clearNotificationFocus = () => {

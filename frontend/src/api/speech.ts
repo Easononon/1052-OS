@@ -20,3 +20,25 @@ export async function requestSpeechTts(input: SpeechTtsInput): Promise<Blob> {
   }
   return res.blob()
 }
+
+export type SpeechAsrResult = {
+  text: string
+}
+
+export async function requestSpeechAsr(audio: Blob): Promise<SpeechAsrResult> {
+  const form = new FormData()
+  form.append('audio', audio, `speech.${audio.type.includes('mp4') ? 'mp4' : 'webm'}`)
+
+  const res = await fetch('/api/speech/asr', {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const message = body && typeof body === 'object' && 'error' in body
+      ? String((body as { error: unknown }).error)
+      : res.statusText
+    throw new Error(message || '语音识别失败')
+  }
+  return res.json() as Promise<SpeechAsrResult>
+}

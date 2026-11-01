@@ -1,5 +1,7 @@
 import { HttpError } from '../../../http-error.js'
+import { z } from 'zod'
 import type { AgentTool } from '../agent.tool.types.js'
+import { getDiagnosticScope } from '../aiaas-diagnostic-scope.js'
 
 const DEFAULT_AIAAS_API_URL = 'http://127.0.0.1:8000'
 const DEFAULT_GATEWAY_BASE_URL = 'http://127.0.0.1:18765'
@@ -10,6 +12,43 @@ const DIAGNOSIS_METRICS = [
   'blower_frequency_hz',
   'valve_opening_pct',
 ] as const
+
+const observationSchema = z.object({
+  state: z.record(z.unknown()),
+  provenance: z.object({
+    source: z.enum(['redis_cache', 'generated_sample']),
+    cache_status: z.enum(['available', 'empty', 'unavailable']),
+    simulated: z.literal(true).nullable(), physical_source_verified: z.literal(false),
+    deployment_mode: z.string(), scenario: z.string(),
+    data_timestamp: z.string().min(1),
+    observed_at: z.string().datetime({ offset: true }),
+    age_seconds: z.number().finite().nullable(), timestamp_in_future: z.boolean().nullable(),
+    timestamp_has_timezone: z.boolean(),
+  }).refine(p => p.timestamp_has_timezone
+    ? z.string().datetime({ offset: true }).safeParse(p.data_timestamp).success
+      && p.age_seconds !== null && p.timestamp_in_future !== null
+    : p.age_seconds === null && p.timestamp_in_future === null),
+})
+
+async function readStateObservation(signal?: AbortSignal) {
+  const endpoint = '/api/state/observation'
+  let payload: unknown
+  try { payload = await fetchAiaas(endpoint, { signal }) }
+  catch (error) {
+    if (!(error instanceof HttpError) || error.status !== 404) throw error
+    if (getDiagnosticScope()) throw new HttpError(403, 'simulation_only: provenance_required')
+    return { ...advisoryEnvelope('/api/state', await fetchAiaas('/api/state', { signal })),
+      provenance: { source: 'unknown', simulated: null, physical_source_verified: false,
+        notice: 'Legacy API has no provenance. Do not infer a physical PLC connection or fresh telemetry from HTTP 200.' } }
+  }
+  const parsed = observationSchema.safeParse(payload)
+  if (!parsed.success) throw new HttpError(502, 'AIAAS 数据来源契约无效，不能把此响应当作已验证现场数据')
+  if (getDiagnosticScope() && parsed.data.provenance.simulated !== true) throw new HttpError(403, 'simulation_only')
+  return { ...advisoryEnvelope(endpoint, parsed.data.state), provenance: parsed.data.provenance,
+    evidence_limits: { history_window_evaluated: false, coverage_evaluated: false,
+      duplicates_evaluated: false, missing_samples_evaluated: false,
+      notice: 'Single snapshot only. Missing quality flags are not evidence of complete, healthy, fresh, alarm-free or physically verified data. Do not infer historical trends or verified completeness.' } }
+}
 
 function aiaasBaseUrl() {
   return (process.env.AIAAS_API_URL || DEFAULT_AIAAS_API_URL).replace(/\/+$/, '')
@@ -264,11 +303,10 @@ export const aiaasTools: AgentTool[] = [
   {
     name: 'aiaas_get_state',
     description:
-      '读取 AI 智能精准曝气系统当前实时状态，包括 DO、NH4-N、风机频率、阀门开度、能耗和控制模式。只读，不执行控制。',
+      '读取曝气状态及数据来源：先检查provenance的仿真、缓存状态、原始时间与年龄。缓存命中不证明PLC已接通，旧API来源未知。只读，不执行控制。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
-    async execute() {
-      const endpoint = '/api/state'
-      return advisoryEnvelope(endpoint, await fetchAiaas(endpoint))
+    async execute(_args, ctx) {
+      return readStateObservation(ctx?.signal)
     },
   },
   {
@@ -276,9 +314,9 @@ export const aiaasTools: AgentTool[] = [
     description:
       '读取 AI 智能精准曝气系统当前报警快照，适合诊断高氨氮、PLC 故障安全、传感器越界和低风压风险。只读。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
-    async execute() {
+    async execute(_args, ctx) {
       const endpoint = '/api/alarms'
-      return advisoryEnvelope(endpoint, await fetchAiaas(endpoint))
+      return advisoryEnvelope(endpoint, await fetchAiaas(endpoint, { signal: ctx?.signal }))
     },
   },
   {
@@ -293,13 +331,13 @@ export const aiaasTools: AgentTool[] = [
       },
       additionalProperties: false,
     },
-    async execute(args) {
+    async execute(args, ctx) {
       const input = (args ?? {}) as Record<string, unknown>
       const params = new URLSearchParams()
       addParam(params, 'window_minutes', readNumber(input.windowMinutes, 1440, 5, 10080))
       addParam(params, 'horizon_minutes', readNumber(input.horizonMinutes, 60, 5, 1440))
       const endpoint = withQuery('/api/prediction/analysis', params)
-      return advisoryEnvelope('/api/prediction/analysis', await fetchAiaas(endpoint))
+      return advisoryEnvelope('/api/prediction/analysis', await fetchAiaas(endpoint, { signal: ctx?.signal }))
     },
   },
   {
@@ -349,12 +387,12 @@ export const aiaasTools: AgentTool[] = [
       },
       additionalProperties: false,
     },
-    async execute(args) {
+    async execute(args, ctx) {
       const input = (args ?? {}) as Record<string, unknown>
       const params = new URLSearchParams()
       addParam(params, 'limit', readNumber(input.limit, 20, 1, 100))
       const endpoint = withQuery('/api/control/logs', params)
-      return advisoryEnvelope('/api/control/logs', await fetchAiaas(endpoint))
+      return advisoryEnvelope('/api/control/logs', await fetchAiaas(endpoint, { signal: ctx?.signal }))
     },
   },
   {

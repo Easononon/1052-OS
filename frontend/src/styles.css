@@ -314,7 +314,20 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   display: none;
 }
 
-.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
 .nav-section-title {
   padding: 6px 10px;
@@ -323,6 +336,15 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   color: var(--fg-4);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.sidebar.collapsed .nav {
+  overflow: hidden auto;
+  padding-right: 0;
+}
+
+.sidebar.collapsed .nav-group {
+  gap: 4px;
 }
 
 .nav-item {

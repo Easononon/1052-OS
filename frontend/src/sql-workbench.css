@@ -15,57 +15,16 @@
   width: 100%;
 }
 
-.sidebar-ribbon {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 30px;
+.sidebar-clippit {
+  display: grid;
+  place-items: center;
+  min-height: 76px;
   margin: 0 6px -4px;
-  padding: 6px 8px;
-  border-radius: 999px;
-  color: var(--fg-4);
-  background:
-    linear-gradient(90deg, rgba(99, 102, 241, 0.14), rgba(14, 165, 233, 0.08)),
-    var(--surface-1);
-  border: 1px solid var(--hairline);
-  font-family: var(--mono);
-  font-size: 10px;
-  overflow: hidden;
 }
 
-.sidebar-ribbon::before,
-.sidebar-ribbon::after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  border: 1px solid rgba(129, 140, 248, 0.35);
-  transform: rotate(45deg);
-  background: rgba(129, 140, 248, 0.12);
-}
-
-.sidebar-ribbon span {
-  color: var(--fg-2);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.sidebar-ribbon i {
-  font-style: normal;
-  opacity: 0.75;
-}
-
-.sidebar.collapsed .sidebar-ribbon {
-  margin-inline: 0;
-  padding-inline: 0;
-  gap: 0;
-}
-
-.sidebar.collapsed .sidebar-ribbon span,
-.sidebar.collapsed .sidebar-ribbon i {
-  display: none;
+.sidebar.collapsed .sidebar-clippit {
+  min-height: 58px;
+  transform: scale(.78);
 }
 
 .sql-workbench-page {

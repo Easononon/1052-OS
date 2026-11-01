@@ -33,12 +33,47 @@ import {
 } from './modules/channels/feishu/feishu.routes.js'
 import { appendBackendRuntimeLog } from './runtime-logs.js'
 import { ensurePkmIndex } from './modules/pkm/pkm.service.js'
+import { isDiagnosticMode } from './modules/agent/agent.diagnostic-policy.js'
+import { aiaasDiagnosticRouter } from './modules/agent/aiaas-diagnostic.routes.js'
 
 export function createApp(): Express {
   const app = express()
 
+  app.use((req, res, next) => {
+    if (!isDiagnosticMode()) return next()
+    const localHosts = new Set(['127.0.0.1', 'localhost', '[::1]'])
+    let host = ''
+    let allowedOrigin = true
+    try {
+      host = new URL(`http://${req.headers.host || ''}`).hostname
+      if (req.headers.origin) {
+        const origin = new URL(req.headers.origin)
+        allowedOrigin = localHosts.has(origin.hostname) && origin.protocol === 'http:'
+      }
+    } catch { allowedOrigin = false }
+    if (!localHosts.has(host) || !allowedOrigin) {
+      res.status(403).json({ error: 'Diagnostic mode only accepts loopback hosts and local HTTP origins' })
+      return
+    }
+    next()
+  })
   app.use(cors())
   app.use(express.json({ limit: '2mb' }))
+  // Callback SDKs may accept GET/HEAD bodies; disabling startup alone is insufficient.
+  app.use('/api/channels', (_req, res, next) => {
+    if (!isDiagnosticMode()) return next()
+    res.status(403).json({ error: 'External channels and callbacks are disabled in diagnostic mode' })
+  })
+  app.use((req, res, next) => {
+    if (!isDiagnosticMode() || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
+    const allowed = new Set([
+      'POST /api/agent/chat', 'POST /api/agent/chat/stream',
+      'PUT /api/agent/history', 'POST /api/agent/diagnostics/analyze',
+      'PUT /api/aiaas/diagnostics/scope', 'POST /api/aiaas/diagnostics/stream', 'POST /api/aiaas/diagnostics/revoke',
+    ])
+    if (allowed.has(`${req.method} ${req.path}`)) return next()
+    res.status(403).json({ error: 'AIAAS diagnostic mode: administrative, SQL and external-action endpoints disabled' })
+  })
   app.use(
     '/api/agent/uploads',
     express.static(path.join(config.dataDir, '1052', 'uploads')),
@@ -62,6 +97,7 @@ export function createApp(): Express {
 
   app.use('/api/settings', settingsRouter)
   app.use('/api/agent', agentRouter)
+  app.use('/api/aiaas/diagnostics', aiaasDiagnosticRouter)
   app.use('/api/calendar', calendarRouter)
   app.use('/api/repository', repositoryRouter)
   app.use('/api/notes', notesRouter)

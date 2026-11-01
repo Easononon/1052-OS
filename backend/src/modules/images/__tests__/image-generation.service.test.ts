@@ -114,3 +114,46 @@ describe('image generation service MiniMax support', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('https://api.minimaxi.com/v1/image_generation')
   })
 })
+
+describe('image generation service OpenAI-compatible support', () => {
+  it('rewrites loopback image URLs to the configured provider origin before downloading', async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request, _init?: RequestInit) => {
+      const requestUrl = String(url)
+      if (requestUrl === 'http://127.0.0.1:8100/v1/images/generations') {
+        return new Response(
+          JSON.stringify({
+            data: [
+              {
+                url: 'http://127.0.0.1:8000/v1/media/images/generated-image',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }
+
+      if (requestUrl === 'http://127.0.0.1:8100/v1/media/images/generated-image') {
+        return new Response(new Uint8Array([4, 5, 6]), {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        })
+      }
+
+      return new Response('unexpected url: ' + requestUrl, { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const service = await loadService({
+      ...baseImageSettings,
+      baseUrl: 'http://127.0.0.1:8100/v1',
+      modelId: 'grok-imagine-image',
+    })
+
+    const result = await service.generateImages({ prompt: 'industrial icon', count: 1 })
+
+    expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
+      'http://127.0.0.1:8100/v1/media/images/generated-image',
+    )
+    expect(result.images).toHaveLength(1)
+    expect(result.images[0]).toMatchObject({ format: 'jpeg', sizeBytes: 3 })
+  })
+})

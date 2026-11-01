@@ -1210,7 +1210,9 @@ export async function installSkillFromMarketplace(input: SkillMarketplaceInstall
 }
 
 export async function formatSkillsRuntimeContext() {
-  const skills = await getEnabledSkillIndex()
+  const skills = (await getEnabledSkillIndex()).filter(s => !getDiagnosticScope() || SCOPED_DIAGNOSTIC_SKILLS.has(s.id))
+  if (getDiagnosticScope()) return ['Approved read-only AIAAS skills (read SKILL.md before applying):',
+    ...skills.map(s => `${s.id}: ${s.description}`)].join('\n')
   const marketplaceRule =
     '- If the user wants to discover or install new Skills, use skills_marketplace_search first, then skills_marketplace_inspect to review file count, total size, directories, and whether scripts are included. Marketplace install downloads the full Skill directory, including SKILL.md, references, scripts, assets, and other bundled files. In default permission mode, explain the source, size, scripts, and expected effect before installing and wait for confirmation. In full-access mode, installation may proceed directly.'
 
@@ -1232,3 +1234,4 @@ export async function formatSkillsRuntimeContext() {
     ...skills.map((skill) => `  - ${skill.id}: ${skill.name} - ${skill.description}`),
   ].join('\n')
 }
+import { getDiagnosticScope, SCOPED_DIAGNOSTIC_SKILLS } from '../agent/aiaas-diagnostic-scope.js'

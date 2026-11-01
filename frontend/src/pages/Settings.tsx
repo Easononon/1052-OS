@@ -207,9 +207,12 @@ type SettingsProps = {
    * Settings page can still render in isolation (e.g. tests).
    */
   onRestartOnboarding?: () => void
+  section?: SettingsSection
 }
 
-export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
+export type SettingsSection = 'models' | 'agent' | 'appearance' | 'system'
+
+export default function Settings({ onRestartOnboarding, section }: SettingsProps = {}) {
   const {
     theme,
     setTheme,
@@ -355,6 +358,7 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
   const updateRunActive = isUpdateRunActive(updateRun)
   const canReinstallArchiveLatestStatus = canReinstallArchiveLatest(updateStatus)
   const canInstallSystemUpdate = getCanInstallSystemUpdate(updateStatus)
+  const showSettingsSection = (target: SettingsSection) => !section || section === target
 
   // Hook fetches /settings on mount and hydrates field state. Sync the
   // ThemeContext-owned `theme` from the loaded payload once it lands.
@@ -689,6 +693,8 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
       <div className="settings-layout">
         <div className="settings-main">
           <div className="settings">
+            {showSettingsSection('models') && (
+              <>
             <SettingsFoldout title={t('LLM 接入', 'LLM Access')} defaultOpen {...foldoutLabels}>
               <div className="settings-row settings-row-stack">
                 <div className="settings-row-label">
@@ -1252,7 +1258,10 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
                 </div>
               </div>
             </SettingsFoldout>
+              </>
+            )}
 
+            {showSettingsSection('agent') && (
             <SettingsFoldout title={t('Agent 行为', 'Agent Behavior')} defaultOpen {...foldoutLabels}>
 
               <div className="settings-row settings-row-stack">
@@ -1583,8 +1592,11 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
                 </button>
               </div>
             </SettingsFoldout>
+            )}
 
-            <SettingsFoldout title={t('系统更新', 'System Update')} {...foldoutLabels}>
+            {showSettingsSection('system') && (
+              <>
+            <SettingsFoldout title={t('系统更新', 'System Update')} defaultOpen {...foldoutLabels}>
               <div className="settings-row settings-row-stack">
                 <div className="settings-row-label">
                   <div className="settings-row-title">检查与安装 GitHub 最新版</div>
@@ -1762,7 +1774,11 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
                 )}
               </div>
             </SettingsFoldout>
-            <SettingsFoldout title={t('外观', 'Appearance')} {...foldoutLabels}>
+              </>
+            )}
+
+            {showSettingsSection('appearance') && (
+            <SettingsFoldout title={t('外观', 'Appearance')} defaultOpen {...foldoutLabels}>
 
               <div className="settings-row">
                 <div className="settings-row-label">
@@ -2178,6 +2194,7 @@ export default function Settings({ onRestartOnboarding }: SettingsProps = {}) {
                 ) : null}
               </div>
             </SettingsFoldout>
+            )}
           </div>
         </div>
 

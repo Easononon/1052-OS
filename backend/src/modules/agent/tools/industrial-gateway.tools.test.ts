@@ -211,6 +211,7 @@ describe('industrialGatewayTools', () => {
       url: 'opc.tcp://192.168.10.112:4840', confirmed: true,
     }) as { after: { ok: boolean; config: { url: string } } }
     expect(result.after.config.url).toBe('opc.tcp://192.168.10.112:4840')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('install_nodered_protocol requires confirmation and forwards params', async () => {

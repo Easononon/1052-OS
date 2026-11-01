@@ -66,7 +66,7 @@ export default function Toolbox() {
   }
 
   useEffect(() => {
-    if (provider === 'uapis') void load()
+    if (!provider || provider === 'uapis') void load()
   }, [provider])
 
   const loadIntelSkill = async () => {

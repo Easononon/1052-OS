@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import ClippitBuddy from '../components/ClippitBuddy'
 import IndustrialAgentMark from '../components/IndustrialAgentMark'
-import { NAV_ITEMS } from './nav'
-import { MirrorText, MirrorChip } from './primitives'
+import { NAV_SECTIONS, navItemMatches } from './nav'
+import { MirrorText } from './primitives'
 
 const COLLAPSED_KEY = 'agent.sidebar.collapsed'
 
@@ -53,34 +54,32 @@ export function MirrorSidebar() {
           </svg>
         </button>
       </div>
-      <MirrorText role="label" as="div" className="mr-sidebar-section">导航</MirrorText>
       <nav className="mr-nav">
-        {NAV_ITEMS.map((item) => {
-          const active =
-            loc.pathname === item.path ||
-            (item.path !== '/' && loc.pathname.startsWith(item.path + '/'))
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`mr-nav-item${active ? ' is-active' : ''}`}
-              aria-current={active ? 'page' : undefined}
-            >
-              <item.Icon size={16} className="mr-nav-icon" />
-              <span>{item.label}</span>
-            </Link>
-          )
-        })}
+        {NAV_SECTIONS.map((section) => (
+          <div className="mr-nav-group" key={section.id}>
+            <MirrorText role="label" as="div" className="mr-sidebar-section">
+              {section.label}
+            </MirrorText>
+            {section.items.map((item) => {
+              const active = navItemMatches(loc.pathname, item)
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`mr-nav-item${active ? ' is-active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <item.Icon size={16} className="mr-nav-icon" />
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
       <div className="mr-sidebar-footer">
-        <div className="mr-chip-row">
-          <MirrorChip active>Agent</MirrorChip>
-          <MirrorChip>01</MirrorChip>
-          <MirrorChip>02</MirrorChip>
-          <MirrorChip>03</MirrorChip>
-          <MirrorChip>04</MirrorChip>
-          <MirrorChip>05</MirrorChip>
-          <MirrorChip>06</MirrorChip>
+        <div className="mr-clippit-row">
+          <ClippitBuddy />
         </div>
         <div className="mr-user-row">
           <div className="mr-avatar" />

@@ -18,8 +18,13 @@ describe('aiaas agent tools', () => {
   it('reads realtime state from AIAAS API and marks result advisory-only', async () => {
     process.env.AIAAS_API_URL = 'http://aiaas.local:8000/'
     const fetchMock = vi.fn(async (url: string) => {
-      expect(url).toBe('http://aiaas.local:8000/api/state')
-      return new Response(JSON.stringify({ do_mg_l: 2.1, nh4n_mg_l: 0.8 }), { status: 200 })
+      expect(url).toBe('http://aiaas.local:8000/api/state/observation')
+      return new Response(JSON.stringify({ state: { do_mg_l: 2.1, nh4n_mg_l: 0.8 }, provenance: {
+        source: 'generated_sample', cache_status: 'unavailable', simulated: true,
+        physical_source_verified: false, deployment_mode: 'docker_sim', scenario: 'normal',
+        data_timestamp: '2026-11-01T00:00:00Z', observed_at: '2026-11-01T00:00:01Z',
+        age_seconds: 1, timestamp_in_future: false, timestamp_has_timezone: true,
+      } }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
 
@@ -27,7 +32,8 @@ describe('aiaas agent tools', () => {
 
     expect(result).toMatchObject({
       source: 'aiaas',
-      endpoint: '/api/state',
+      endpoint: '/api/state/observation',
+      provenance: { source: 'generated_sample', simulated: true, physical_source_verified: false },
       safety: {
         direct_control_allowed: false,
         recommendation_level: 'advisory_only',
@@ -37,6 +43,32 @@ describe('aiaas agent tools', () => {
         nh4n_mg_l: 0.8,
       },
     })
+  })
+
+  it('marks legacy state as unverified instead of inferring a live PLC from HTTP 200', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/observation')
+      ? new Response('Not Found', { status: 404 })
+      : new Response(JSON.stringify({ do_mg_l: 2.1 }), { status: 200 })))
+    const result = await toolByName(aiaasTools, 'aiaas_get_state').execute({})
+    expect(result).toMatchObject({ endpoint: '/api/state', data: { do_mg_l: 2.1 },
+      provenance: { source: 'unknown', simulated: null, physical_source_verified: false } })
+  })
+
+  it.each([200, 503])('does not silently fall back when observation is invalid or unavailable (%s)', async (status) => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ state: {}, provenance: {} }), { status }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(toolByName(aiaasTools, 'aiaas_get_state').execute({})).rejects.toThrow()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects simulated=false rather than approving an unverified cache as real data', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ state: { do_mg_l: 2 }, provenance: {
+      source: 'redis_cache', cache_status: 'available', simulated: false,
+      physical_source_verified: false, deployment_mode: 'unknown', scenario: 'normal',
+      data_timestamp: '2026-11-01T00:00:00Z', observed_at: '2026-11-01T00:00:01Z',
+      age_seconds: 1, timestamp_has_timezone: true, timestamp_in_future: false,
+    } }), { status: 200 })))
+    await expect(toolByName(aiaasTools, 'aiaas_get_state').execute({})).rejects.toThrow('数据来源契约无效')
   })
 
   it('passes prediction query parameters without allowing control writes', async () => {

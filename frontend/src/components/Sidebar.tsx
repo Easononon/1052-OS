@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { NotificationsApi } from '../api/notifications'
 import { IconChevron, IconEdit } from './Icons'
-import { NAV_ITEMS } from '../mirror/nav'
+import { NAV_SECTIONS } from '../mirror/nav'
+import ClippitBuddy from './ClippitBuddy'
 import IndustrialAgentMark from './IndustrialAgentMark'
 import ProfileModal, { type Profile } from './ProfileModal'
 
@@ -88,32 +89,31 @@ export default function Sidebar() {
         </div>
 
         <nav className="nav">
-          <div className="nav-section-title">导航</div>
-          {NAV_ITEMS.map(({ path, label, Icon }) => (
-            <NavLink
-              key={path}
-              to={path}
-              className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
-            >
-              <Icon size={17} />
-              <span className="nav-label">{label}</span>
-              {path === '/notifications' && unread > 0 ? (
-                <span className="nav-badge">{unread > 99 ? '99+' : unread}</span>
-              ) : null}
-            </NavLink>
+          {NAV_SECTIONS.map((section) => (
+            <div className="nav-group" key={section.id}>
+              <div className="nav-section-title">{section.label}</div>
+              {section.items.map(({ path, label, Icon }) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  end={path === '/today' || path === '/chat'}
+                  className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+                >
+                  <Icon size={17} />
+                  <span className="nav-label">{label}</span>
+                  {(path === '/notifications' || path === '/today/activity') && unread > 0 ? (
+                    <span className="nav-badge">{unread > 99 ? '99+' : unread}</span>
+                  ) : null}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 
         <div className="sidebar-spacer" />
 
-        <div className="sidebar-ribbon" aria-hidden="true">
-          <span>AGENT</span>
-          <i>01</i>
-          <i>02</i>
-          <i>03</i>
-          <i>04</i>
-          <i>05</i>
-          <i>06</i>
+        <div className="sidebar-clippit">
+          <ClippitBuddy />
         </div>
 
         <div className="user">

@@ -31,6 +31,9 @@ import { wikiTools } from './tools/wiki.tools.js'
 import { pkmTools } from './tools/pkm.tools.js'
 import { ocrTools } from './tools/ocr.tools.js'
 import { getSettings } from '../settings/settings.service.js'
+import { isDiagnosticMode, isToolAllowed } from './agent.diagnostic-policy.js'
+import { aiaasDatabaseTools } from './tools/aiaas-database.tools.js'
+import { getDiagnosticScope } from './aiaas-diagnostic-scope.js'
 
 /**
  * Default per-tool wall-clock timeout when a tool does not declare its own.
@@ -80,6 +83,7 @@ const AGENT_TOOLS: AgentTool[] = [
   ...filesystemTools,
   ...feishuTools,
   ...aiaasTools,
+  ...aiaasDatabaseTools,
   ...industrialGatewayTools,
   ...intelTools,
   ...wechatDesktopTools,
@@ -352,11 +356,11 @@ async function withToolTimeout<T>(
 }
 
 export function getAgentToolDefinitions(): LLMToolDefinition[] {
-  return AGENT_TOOLS.map((tool) => buildToolDefinition(tool))
+  return AGENT_TOOLS.filter((tool) => isToolAllowed(tool.name)).map((tool) => buildToolDefinition(tool))
 }
 
 export function hasAgentTool(name: string) {
-  return TOOL_MAP.has(name)
+  return isToolAllowed(name) && TOOL_MAP.has(name)
 }
 
 export function getAgentToolDefinitionsForNames(names: readonly string[]): LLMToolDefinition[] {
@@ -364,6 +368,7 @@ export function getAgentToolDefinitionsForNames(names: readonly string[]): LLMTo
   const tools: LLMToolDefinition[] = []
 
   for (const name of names) {
+    if (!isToolAllowed(name)) continue
     if (seen.has(name)) continue
     const tool = TOOL_MAP.get(name)
     if (!tool) continue
@@ -538,8 +543,13 @@ export async function executeToolCall(
   toolCall: LLMToolCall,
   runtimeContext?: AgentToolRuntimeContext,
 ): Promise<LLMConversationMessage> {
+  if (!isToolAllowed(toolCall.function.name)) {
+    return buildToolFailureMessage(toolCall, toolCall.function.name,
+      'AIAAS 只读诊断权限拒绝此工具。confirmed/fullAccess 不能提升权限。',
+      { retryable: false, hint: '只能读取批准的遥测和数据库分析；禁止写 PLC、数据库、终端和外部通知。' })
+  }
   const settings = await getSettings()
-  const fullAccess = settings.agent.fullAccess === true
+  const fullAccess = !isDiagnosticMode() && settings.agent.fullAccess === true
   const tool = TOOL_MAP.get(toolCall.function.name)
 
   if (!tool) {
@@ -596,6 +606,7 @@ export async function executeToolCall(
 
   for (let attempt = 0; attempt <= MAX_TOOL_RETRIES; attempt += 1) {
     try {
+      await getDiagnosticScope()?.assertCurrent()
       const confirmedArgs =
         fullAccess && parsedArgs && typeof parsedArgs === 'object' && !Array.isArray(parsedArgs)
           ? { ...(parsedArgs as Record<string, unknown>), confirmed: true }
@@ -609,7 +620,8 @@ export async function executeToolCall(
           : confirmedArgs
       const toolCtx: AgentToolContext = {}
       const result = await withToolTimeout(
-        (signal) => tool.execute(args, { ...toolCtx, signal }),
+        (signal) => tool.execute(args, { ...toolCtx, signal: getDiagnosticScope()
+          ? AbortSignal.any([signal, getDiagnosticScope()!.signal]) : signal }),
         tool.name,
         timeoutMs,
       )
@@ -629,7 +641,7 @@ export async function executeToolCall(
       lastRetryable = isRetriableToolError(error)
 
       // Retry on transient errors with backoff
-      if (attempt < MAX_TOOL_RETRIES && lastRetryable) {
+      if (!getDiagnosticScope() && attempt < MAX_TOOL_RETRIES && lastRetryable) {
         console.warn(`[tool] ${tool.name} transient error (attempt ${attempt + 1}/${MAX_TOOL_RETRIES + 1}): ${lastError.message}`)
         await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
         continue

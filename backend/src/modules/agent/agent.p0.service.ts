@@ -18,6 +18,8 @@ import { summarizeCheckpointForInjection } from './agent.checkpoint.service.js'
 import { formatUapisDirectorySummary } from '../uapis/uapis.service.js'
 import type { AgentCheckpoint, AgentPackName } from './agent.runtime.types.js'
 import type { LLMConversationMessage, LLMToolDefinition } from './llm.client.js'
+import { isDiagnosticMode } from './agent.diagnostic-policy.js'
+import { getAgentSystemPrompt } from './agent.prompt.service.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = path.resolve(__dirname, '..', '..', '..', '..')
@@ -161,16 +163,19 @@ export async function buildP0Messages(input: {
   mountedPacks?: readonly AgentPackName[]
   extraSections?: string[]
 }) {
+  const diagnostic = isDiagnosticMode()
   const [coreRuleFiles, projectProfile, uapisSummary] = await Promise.all([
-    getCoreRuleFiles(),
-    getProjectProfileSummary(),
-    getP0UapisSummary(),
+    diagnostic ? getAgentSystemPrompt().then(core => ({ core, local: '' })) : getCoreRuleFiles(),
+    diagnostic ? Promise.resolve('AIAAS diagnostic; approved telemetry and database analysis only.') : getProjectProfileSummary(),
+    diagnostic ? Promise.resolve('') : getP0UapisSummary(),
   ])
   const coreRules = [coreRuleFiles.core, coreRuleFiles.local].filter(Boolean).join('\n\n')
   const checkpointSummary = summarizeCheckpointForInjection(input.checkpoint)
   const mountedPacksSummary = renderMountedPacks(input.mountedPacks ?? [])
   const extraSections = input.extraSections ?? []
-  const routingPrompt = getRoutingPrompt()
+  const routingPrompt = diagnostic
+    ? 'Use request_context_upgrade to request data-pack and skill-pack for approved analysis. Pack upgrades never grant write or terminal permissions.'
+    : getRoutingPrompt()
   const systemContent = [
     coreRules,
     projectProfile,

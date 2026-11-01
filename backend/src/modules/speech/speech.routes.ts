@@ -1,8 +1,28 @@
 import { Router } from 'express'
+import multer from 'multer'
 import { httpError } from '../../http-error.js'
-import { synthesizeEdgeTts } from './speech.service.js'
+import { synthesizeEdgeTts, transcribeSpeech } from './speech.service.js'
 
 export const speechRouter: Router = Router()
+
+const speechUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+})
+
+speechRouter.post('/asr', speechUpload.single('audio'), async (req, res, next) => {
+  try {
+    if (!req.file) throw httpError(400, 'audio 必填')
+    const text = await transcribeSpeech({
+      audio: req.file.buffer,
+      mimeType: req.file.mimetype,
+      fileName: req.file.originalname,
+    })
+    res.json({ text })
+  } catch (error) {
+    next(error)
+  }
+})
 
 speechRouter.post('/tts', async (req, res, next) => {
   try {
